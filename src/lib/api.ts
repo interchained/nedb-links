@@ -7,6 +7,7 @@
  */
 
 export const TOKEN_KEY = "links-admin-token";
+export const ADDRESS_KEY = "links-address";
 
 export class ApiError extends Error {
   constructor(
@@ -32,6 +33,33 @@ export function setToken(token: string): void {
     else localStorage.removeItem(TOKEN_KEY);
   } catch {
     /* storage unavailable — requests proceed unauthenticated */
+  }
+}
+
+export function getAddress(): string | null {
+  try {
+    return localStorage.getItem(ADDRESS_KEY);
+  } catch {
+    return null;
+  }
+}
+
+/** Persist a wallet session (or operator credential). */
+export function setSession(token: string, address: string): void {
+  setToken(token);
+  try {
+    localStorage.setItem(ADDRESS_KEY, address);
+  } catch {
+    /* storage unavailable */
+  }
+}
+
+export function clearSession(): void {
+  setToken("");
+  try {
+    localStorage.removeItem(ADDRESS_KEY);
+  } catch {
+    /* storage unavailable */
   }
 }
 

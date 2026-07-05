@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "@interchained/portal-react";
 
+import { AccessPanel } from "../../src/components/AccessPanel";
 import { Nav } from "../../src/components/Nav";
-import { TokenGate } from "../../src/components/TokenGate";
+import { AccountGate } from "../../src/components/AccountGate";
 import "../../src/lib/blocks/builtin";
 import "../../src/lib/templates/builtin";
 import { ApiError, fetchPreviewHtml, getJson, postJson, putJson } from "../../src/lib/api";
@@ -258,7 +259,7 @@ export default function EditPage(): React.ReactElement {
     return (
       <>
         <Nav />
-        <TokenGate onReady={() => void load()} />
+        <AccountGate onReady={() => void load()} />
       </>
     );
   }
@@ -412,6 +413,8 @@ export default function EditPage(): React.ReactElement {
                 )}
               </div>
             </div>
+
+            <AccessPanel identityId={manifest.identityId} />
           </section>
 
           {/* ── Right: live preview via the REAL renderer ────────────────── */}

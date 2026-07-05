@@ -3,7 +3,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import "../src/lib/blocks/builtin";
 import "../src/lib/templates/builtin";
 import { Nav } from "../src/components/Nav";
-import { TokenGate } from "../src/components/TokenGate";
+import { AccountGate } from "../src/components/AccountGate";
 import { adminHeaders } from "../src/lib/api";
 import { isValidHandle } from "../src/lib/identity";
 import { listTemplates } from "../src/lib/registry";
@@ -258,7 +258,13 @@ export default function ClaimPage(): React.ReactElement {
 
       {locked ? (
         <div className="w-full max-w-xl">
-          <TokenGate onReady={() => setLocked(false)} />
+          <AccountGate
+            onReady={() => {
+              setLocked(false);
+              // Continue the claim the user already started — no second click.
+              void claim();
+            }}
+          />
         </div>
       ) : (
       <section className="w-full max-w-xl mt-12 bg-ink-900 border border-ink-700 rounded-2xl p-6 sm:p-8 shadow-glow animate-fade-in">
