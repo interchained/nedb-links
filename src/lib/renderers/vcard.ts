@@ -16,7 +16,7 @@
  *     with their real names in iOS instead of "homepage".
  */
 
-import type { IdentityManifest } from "../identity";
+import { isFilledUrl, type IdentityManifest } from "../identity";
 import { defineRenderer, type RenderContext } from "../registry";
 import { shareUrl } from "./qr";
 
@@ -100,7 +100,7 @@ export function buildVcard(manifest: IdentityManifest, origin: string): string {
   const sorted = [...manifest.blocks].sort((a, b) => a.order - b.order);
   for (const block of sorted) {
     const d = block.data as Record<string, unknown>;
-    if (block.type === "link" && typeof d.url === "string" && /^(https?:|mailto:|tel:)/i.test(d.url)) {
+    if (block.type === "link" && typeof d.url === "string" && isFilledUrl(d.url)) {
       if (/^tel:/i.test(d.url)) {
         lines.push(`TEL;TYPE=VOICE:${vEscape(d.url.replace(/^tel:/i, ""))}`);
         continue;
@@ -117,7 +117,7 @@ export function buildVcard(manifest: IdentityManifest, origin: string): string {
     }
     if (block.type === "social" && Array.isArray(d.links)) {
       for (const s of d.links as Array<Record<string, unknown>>) {
-        if (typeof s.url === "string" && /^https?:\/\//i.test(s.url)) {
+        if (typeof s.url === "string" && isFilledUrl(s.url) && /^https?:/i.test(s.url)) {
           const network = typeof s.network === "string" ? s.network.toLowerCase() : "web";
           lines.push(`X-SOCIALPROFILE;TYPE=${vEscape(network)}:${s.url}`);
         }

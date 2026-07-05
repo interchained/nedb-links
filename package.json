@@ -16,7 +16,8 @@
     "audit": "portal audit",
     "guard": "portal guard",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test test/*.test.ts"
+    "test": "tsx --test test/renderers.test.ts",
+    "test:api": "tsx --test test/api.test.ts test/auth.test.ts"
   },
   "dependencies": {
     "@interchained/portal-react": "^0.1.2",

@@ -2,6 +2,8 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 import "../src/lib/blocks/builtin";
 import "../src/lib/templates/builtin";
+import { Nav } from "../src/components/Nav";
+import { adminHeaders } from "../src/lib/api";
 import { isValidHandle } from "../src/lib/identity";
 import { listTemplates } from "../src/lib/registry";
 
@@ -112,11 +114,6 @@ function ShareKit({ handle }: { handle: string }): React.ReactElement {
   );
 }
 
-function adminHeaders(): Record<string, string> {
-  const token = localStorage.getItem("links-admin-token");
-  return token ? { Authorization: `Bearer ${token}` } : {};
-}
-
 export default function ClaimPage(): React.ReactElement {
   const templates = useMemo(() => listTemplates(), []);
   const [handle, setHandle] = useState("");
@@ -217,6 +214,8 @@ export default function ClaimPage(): React.ReactElement {
   };
 
   return (
+    <>
+    <Nav />
     <main className="min-h-screen flex flex-col items-center px-5 py-16">
       <header className="text-center max-w-2xl animate-slide-up">
         <p className="font-mono text-xs tracking-widest text-accent-soft uppercase">
@@ -329,5 +328,6 @@ export default function ClaimPage(): React.ReactElement {
         </p>
       </footer>
     </main>
+    </>
   );
 }

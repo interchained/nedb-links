@@ -99,6 +99,8 @@ npm run dev             # Vite client :3000 + API :3001
 ```
 
 Open `http://localhost:3000`, type a handle, claim, publish, share. That's the loop.
+Manage everything after that at `/identities` — every identity you own — and `/edit/:id`,
+the block editor with a live preview rendered by the exact renderer the public page uses.
 
 **Production:**
 
@@ -130,6 +132,16 @@ GROUP BY source COUNT` answers "salon counter vs Instagram bio" straight from th
 More surfaces land through the same registry — track the
 [issues](../../issues) for the living backlog. No roadmap documents; shipped code and
 open issues only.
+
+## Testing
+
+```bash
+npm test        # renderer suites — pure, no engine needed
+npm run test:api  # the REAL app against a REAL nedbd — boot nedbd first
+```
+
+CI boots an actual NEDB engine (`pip install nedb-engine`) and runs the live suite
+against it on every PR. No mocks — the engine is under test as much as the app.
 
 ## Architecture
 

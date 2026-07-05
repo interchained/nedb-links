@@ -123,6 +123,21 @@ export function isValidHandle(handle: string): boolean {
   return HANDLE_RE.test(handle) && !RESERVED_HANDLES.has(handle);
 }
 
+/**
+ * A URL that actually points somewhere. Template-seeded blocks carry the
+ * placeholder "https://" so users see where links belong — placeholders
+ * are valid to SAVE (drafting never fights you) but renderers skip them,
+ * so an unfilled link never appears on a public surface.
+ */
+export function isFilledUrl(u: unknown): boolean {
+  return typeof u === "string" && /^(https?:\/\/\S+|mailto:\S+|tel:\S+)$/.test(u);
+}
+
+/** Valid as a stored value: empty, the placeholder, or a real URL. */
+export function isStorableUrl(u: unknown): boolean {
+  return u === "" || u === "https://" || u === "http://" || isFilledUrl(u);
+}
+
 export function newIdentityId(): string {
   return `idn_${crypto.randomUUID().replace(/-/g, "").slice(0, 20)}`;
 }

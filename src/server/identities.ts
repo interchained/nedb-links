@@ -178,6 +178,27 @@ identities.post("/", requireAdmin, wrap(async (req, res) => {
   res.status(201).json({ manifest: put.doc, seq: put.seq, head: put.head });
 }));
 
+/** GET /api/identities — every identity this instance owns, newest first.
+ *  Summaries only; the editor loads full manifests by id. */
+identities.get("/", requireAdmin, wrap(async (_req, res) => {
+  const rows = await db.query(
+    `FROM ${COLLECTIONS.identities} ORDER BY updatedAt DESC LIMIT 500`,
+  );
+  const list = (rows as unknown as IdentityManifest[]).map((m) => ({
+    identityId: m.identityId,
+    handle: m.handle,
+    displayName: m.displayName,
+    identityType: m.identityType,
+    template: m.template,
+    theme: m.theme,
+    status: m.status,
+    blockCount: Array.isArray(m.blocks) ? m.blocks.length : 0,
+    publishedAt: m.publishedAt,
+    updatedAt: m.updatedAt,
+  }));
+  res.json({ identities: list });
+}));
+
 /** GET /api/identities/:id — the manifest, straight from the engine. */
 identities.get("/:id", wrap(async (req, res) => {
   const manifest = await getManifest(String(req.params.id));

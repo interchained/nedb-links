@@ -6,7 +6,7 @@
  * editing, never for viewing.
  */
 
-import type { Block, IdentityManifest } from "../identity";
+import { isFilledUrl, type Block, type IdentityManifest } from "../identity";
 import { defineRenderer, type RenderContext } from "../registry";
 
 export interface ThemePalette {
@@ -65,12 +65,17 @@ function renderBlock(b: Block, m: IdentityManifest, origin: string): string {
     case "text":
       return `<p class="tx">${esc(d.text)}</p>`;
     case "link": {
+      // Placeholder URLs are saveable but never rendered — an unfilled
+      // template link doesn't exist as far as the public page knows.
+      if (!isFilledUrl(d.url)) return "";
       const url = safeUrl(d.url);
       const icon = d.icon ? `<span class="ic">${esc(d.icon)}</span>` : "";
       return `<a class="lk" href="${esc(go(origin, m, b.id, url))}" rel="noopener">${icon}<span>${esc(d.label)}</span></a>`;
     }
     case "social": {
-      const links = Array.isArray(d.links) ? (d.links as Array<Record<string, unknown>>) : [];
+      const links = (Array.isArray(d.links) ? (d.links as Array<Record<string, unknown>>) : []).filter(
+        (l) => isFilledUrl(l.url),
+      );
       if (!links.length) return "";
       const items = links
         .map(
@@ -81,6 +86,7 @@ function renderBlock(b: Block, m: IdentityManifest, origin: string): string {
       return `<div class="sr">${items}</div>`;
     }
     case "embed": {
+      if (!isFilledUrl(d.url)) return "";
       const src = embedFrame(String(d.url ?? ""));
       if (src) {
         return `<div class="em"><iframe src="${esc(src)}" title="${esc(d.title || "Embedded media")}" loading="lazy" allowfullscreen allow="encrypted-media"></iframe></div>`;

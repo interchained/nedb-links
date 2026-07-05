@@ -1,0 +1,104 @@
+/**
+ * App assembly — everything except env loading and listening.
+ *
+ * Exists as a factory so tests can boot the REAL app against a REAL
+ * nedbd on an ephemeral port. NEDB Links does not test against mocks;
+ * the engine is the system under test as much as the app is.
+ */
+
+import { existsSync } from "node:fs";
+import { join, resolve } from "node:path";
+
+import cors from "cors";
+import express, { type Express, type NextFunction, type Request, type Response } from "express";
+
+import { config } from "./config";
+import { db } from "./db";
+import { handles, identities } from "./identities";
+import { preview } from "./preview";
+import { render } from "./render";
+
+export function createApp(): Express {
+  const app = express();
+
+  // ── Request logger ────────────────────────────────────────────────────────
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    const start = Date.now();
+    // req.originalUrl captured now — Express mutates req.url through routers.
+    const originalUrl = req.originalUrl || req.url;
+    res.on("finish", () => {
+      const ms = Date.now() - start;
+      const status = res.statusCode;
+      const color =
+        status >= 500 ? "\x1b[31m" : status >= 400 ? "\x1b[33m" : status >= 300 ? "\x1b[36m" : "\x1b[32m";
+      console.log(`${color}${status}\x1b[0m ${req.method} ${originalUrl} — ${ms}ms`);
+    });
+    next();
+  });
+
+  app.use(cors());
+  app.use(express.json({ limit: "8mb" }));
+
+  // ── Health — reports every dependency ────────────────────────────────────
+  app.get("/api/health", async (_req, res) => {
+    let nedb: { ok: boolean; version?: string; error?: string } = { ok: false };
+    try {
+      const h = await db.health();
+      nedb = { ok: h.ok, version: h.version };
+    } catch (err) {
+      nedb = { ok: false, error: err instanceof Error ? err.message : String(err) };
+    }
+    res.json({
+      links: "ok",
+      nedb,
+      nedbUrl: config.nedbUrl,
+      db: config.nedbDb,
+      authConfigured: Boolean(config.adminToken),
+      aiassist: { configured: Boolean(config.aiassistApiKey) },
+    });
+  });
+
+  // ── API ───────────────────────────────────────────────────────────────────
+  app.use("/api/handles", handles);
+  app.use("/api/identities", identities);
+  app.use("/api/preview", preview);
+
+  // ── Editor SPA (production build) ─────────────────────────────────────────
+  const dist = resolve(process.cwd(), "dist");
+  const hasDist = existsSync(join(dist, "index.html"));
+  if (hasDist) {
+    app.use(express.static(dist, { index: false }));
+  }
+
+  // ── Public identity surfaces (/:handle, /go/*) ────────────────────────────
+  app.use(render);
+
+  // ── SPA fallback ──────────────────────────────────────────────────────────
+  app.get("*", (req: Request, res: Response) => {
+    if (req.path.startsWith("/api/")) {
+      res.status(404).json({ error: "not found" });
+      return;
+    }
+    if (hasDist) {
+      res.sendFile(join(dist, "index.html"));
+      return;
+    }
+    res
+      .status(503)
+      .send("NEDB Links: no production build found. Run `npm run build`, or use `npm run dev`.");
+  });
+
+  return app;
+}
+
+/** Idempotent database bootstrap — see server.ts for the interop story. */
+export async function ensureDatabase(): Promise<void> {
+  try {
+    await db.createDatabase();
+    console.log(`\x1b[36m⬡\x1b[0m database ready: ${config.nedbDb}`);
+  } catch (err) {
+    console.warn(
+      `\x1b[33m[links] could not ensure database (${err instanceof Error ? err.message : err}) — is nedbd running at ${config.nedbUrl}?\x1b[0m`,
+    );
+  }
+}

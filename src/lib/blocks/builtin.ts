@@ -6,7 +6,14 @@
  */
 
 import { z } from "zod";
+import { isStorableUrl } from "../identity";
 import { defineBlock } from "../registry";
+
+/** Real URL or a placeholder — drafts save freely; renderers skip unfilled. */
+const storableUrl = z
+  .string()
+  .max(2048)
+  .refine(isStorableUrl, "Invalid url");
 
 export const linkBlock = defineBlock({
   type: "link",
@@ -15,7 +22,7 @@ export const linkBlock = defineBlock({
   capabilities: ["shareable", "qr", "searchable", "exportable", "schedulable", "seo"],
   schema: z.object({
     label: z.string().min(1).max(120),
-    url: z.string().url(),
+    url: storableUrl,
     icon: z.string().max(64).optional(),
   }),
   defaults: () => ({ label: "New link", url: "https://", icon: "" }),
@@ -42,7 +49,7 @@ export const socialBlock = defineBlock({
       .array(
         z.object({
           network: z.string().min(1).max(40),
-          url: z.string().url(),
+          url: storableUrl,
         }),
       )
       .max(20),
@@ -56,7 +63,7 @@ export const embedBlock = defineBlock({
   description: "Embedded media by URL — YouTube, Spotify, and friends.",
   capabilities: ["embeddable", "interactive"],
   schema: z.object({
-    url: z.string().url(),
+    url: storableUrl,
     title: z.string().max(120).optional(),
   }),
   defaults: () => ({ url: "https://", title: "" }),

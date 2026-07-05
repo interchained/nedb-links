@@ -187,6 +187,36 @@ test("card escapes hostile display names", async () => {
   assert.ok(html.includes("&lt;script&gt;"), "escaped rendering");
 });
 
+// ── Placeholder semantics: saveable, never rendered ──────────────────────────
+
+test("placeholder URLs are saveable but never rendered on any surface", async () => {
+  const { getBlock } = await import("../src/lib/registry");
+  const linkDef = getBlock("link");
+  assert.ok(linkDef, "link block registered");
+  // Template default ("https://") validates — drafting never fights the user.
+  assert.equal(linkDef.schema.safeParse(linkDef.defaults()).success, true);
+  // But a filled invalid string still fails.
+  assert.equal(linkDef.schema.safeParse({ label: "x", url: "not a url" }).success, false);
+
+  const m = fixture({
+    blocks: [
+      { id: "blk_ph", type: "link", order: 0, data: { label: "Unfilled template link", url: "https://" } },
+      { id: "blk_ok", type: "link", order: 1, data: { label: "Real link", url: "https://real.example.com" } },
+      { id: "blk_soc", type: "social", order: 2, data: { links: [{ network: "x", url: "https://" }] } },
+      { id: "blk_emb", type: "embed", order: 3, data: { url: "https://", title: "empty" } },
+    ],
+  });
+  const html = renderProfileHtml(m, CTX);
+  assert.equal(html.includes("Unfilled template link"), false, "placeholder link hidden");
+  assert.ok(html.includes("Real link"), "filled link renders");
+  assert.equal(html.includes('class="sr"'), false, "social row with only placeholders hidden");
+  assert.equal(html.includes('class="em"'), false, "placeholder embed hidden");
+
+  const v = buildVcard(m, CTX.origin);
+  assert.equal(v.includes("item1.URL:https://\r\n"), false, "vCard skips placeholder URLs");
+  assert.ok(v.includes("item1.URL:https://real.example.com"), "vCard keeps filled URLs");
+});
+
 // ── Profile page ─────────────────────────────────────────────────────────────
 
 test("profile page escapes content and routes clicks through /go", () => {
