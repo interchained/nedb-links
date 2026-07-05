@@ -24,8 +24,8 @@ import { config } from "./config";
 /** Electrum scripthash for a P2WPKH itc1 address. */
 export function addressToScripthash(addr: string): string {
   const decoded = itcAddress.fromBech32(addr);
-  if (decoded.version !== 0 || decoded.data.length !== 20) {
-    throw new Error("only P2WPKH addresses are supported");
+  if (decoded.prefix !== "itc" || decoded.version !== 0 || decoded.data.length !== 20) {
+    throw new Error("only itc1 P2WPKH addresses are supported");
   }
   const script = new Uint8Array(22);
   script[0] = 0x00; // OP_0

@@ -37,6 +37,10 @@ test("scripthash is deterministic and address-sensitive", () => {
 });
 
 test("non-P2WPKH inputs are rejected", () => {
-  assert.throws(() => addressToScripthash("bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu"), /prefix|bech32|invalid/i);
+  assert.throws(
+    () => addressToScripthash("bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu"),
+    /itc1 P2WPKH/,
+    "foreign-network addresses rejected by prefix",
+  );
   assert.throws(() => addressToScripthash("garbage"));
 });
