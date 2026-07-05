@@ -15,6 +15,9 @@ import { COLLECTIONS } from "../lib/identity";
 import { getRenderer } from "../lib/registry";
 import "../lib/renderers/html";
 import "../lib/renderers/json";
+import "../lib/renderers/qr";
+import "../lib/renderers/vcard";
+import "../lib/renderers/card";
 import { config } from "./config";
 import { db } from "./db";
 import { getManifest, resolveHandle } from "./identities";
@@ -86,16 +89,36 @@ render.get("/:handle", wrap(async (req, res, next) => {
     return;
   }
 
-  track({
-    identityId: manifest.identityId,
-    kind: "profile_view",
-    source: typeof req.query.src === "string" ? req.query.src : "direct",
-  });
+  // Honest event semantics per surface: a human looking at the identity is
+  // a profile_view; saving the contact is a vcard_download; fetching QR
+  // bytes or JSON is neither — utility surfaces don't inflate analytics.
+  if (format === "html" || format === "card") {
+    track({
+      identityId: manifest.identityId,
+      kind: "profile_view",
+      source:
+        typeof req.query.src === "string" ? req.query.src : format === "card" ? "card" : "direct",
+    });
+  } else if (format === "vcard") {
+    track({
+      identityId: manifest.identityId,
+      kind: "vcard_download",
+      source: typeof req.query.src === "string" ? req.query.src : "direct",
+    });
+  }
 
-  const out = await renderer.render(manifest, { origin: originOf(req) });
+  // Query params flow through as renderer options (?format=qr&type=png&download=1).
+  const options: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(req.query)) {
+    if (typeof v === "string") options[k] = v;
+  }
+
+  const out = await renderer.render(manifest, { origin: originOf(req), options });
   res.setHeader("content-type", out.contentType);
   if (out.filename) {
     res.setHeader("content-disposition", `attachment; filename="${out.filename}"`);
   }
-  res.send(out.body);
+  // Binary bodies MUST cross Express as Buffer — res.send(Uint8Array) walks
+  // the JSON path and serializes bytes as {"0":137,...}. Found live, kept fixed.
+  res.send(typeof out.body === "string" ? out.body : Buffer.from(out.body));
 }));

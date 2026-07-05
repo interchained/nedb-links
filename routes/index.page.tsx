@@ -14,6 +14,104 @@ export const intent = {
 
 type Availability = "idle" | "checking" | "available" | "taken" | "invalid";
 
+/**
+ * The publish moment: every output of the loop in one place.
+ * Share URL, print-grade QR (SVG + PNG), save-contact vCard, business
+ * card, and the JSON surface — each one is a registered renderer over
+ * the same Identity Manifest.
+ */
+function ShareKit({ handle }: { handle: string }): React.ReactElement {
+  const [copied, setCopied] = useState(false);
+  const origin = window.location.origin;
+  const url = `${origin}/${handle}`;
+
+  const copy = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1600);
+    } catch {
+      /* clipboard unavailable — the URL is visible to select manually */
+    }
+  }, [url]);
+
+  return (
+    <div className="text-left">
+      <p className="text-slate-400 mt-3 text-center">
+        Live. One identity, every surface:
+      </p>
+
+      <div className="mt-5 flex items-center gap-2 bg-ink-850 border border-ink-700 rounded-xl px-4 py-3">
+        <span className="flex-1 font-mono text-sm text-accent-soft truncate">{url}</span>
+        <button
+          onClick={copy}
+          className="shrink-0 rounded-lg border border-accent/50 text-accent-soft text-xs font-bold px-3 py-1.5 hover:bg-accent/10 transition"
+        >
+          {copied ? "✓ copied" : "copy"}
+        </button>
+      </div>
+
+      <div className="mt-4 grid grid-cols-[auto_1fr] gap-4 items-center bg-ink-850 border border-ink-700 rounded-xl p-4">
+        <img
+          src={`/${handle}?format=qr`}
+          alt={`QR code for ${handle}`}
+          className="w-24 h-24 rounded-lg bg-white p-1"
+        />
+        <div>
+          <p className="text-sm font-semibold text-slate-200">
+            Print-grade QR — scans are tracked separately from taps.
+          </p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <a
+              href={`/${handle}?format=qr&download=1`}
+              className="rounded-lg border border-ink-700 text-slate-300 text-xs font-bold px-3 py-1.5 hover:border-accent/50 hover:text-accent-soft transition"
+            >
+              ↓ SVG
+            </a>
+            <a
+              href={`/${handle}?format=qr&type=png&download=1`}
+              className="rounded-lg border border-ink-700 text-slate-300 text-xs font-bold px-3 py-1.5 hover:border-accent/50 hover:text-accent-soft transition"
+            >
+              ↓ PNG (1024px)
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-4 grid grid-cols-2 gap-2">
+        <a
+          href={`/${handle}`}
+          className="rounded-xl bg-accent text-ink-950 font-bold py-3 text-center hover:brightness-110 transition"
+        >
+          View profile
+        </a>
+        <a
+          href={`/${handle}?format=card`}
+          className="rounded-xl border border-accent/50 text-accent-soft font-bold py-3 text-center hover:bg-accent/10 transition"
+        >
+          Business card
+        </a>
+        <a
+          href={`/${handle}?format=vcard`}
+          className="rounded-xl border border-ink-700 text-slate-300 font-semibold py-3 text-center hover:border-accent/50 hover:text-accent-soft transition"
+        >
+          Save contact (.vcf)
+        </a>
+        <a
+          href={`/${handle}?format=json`}
+          className="rounded-xl border border-ink-700 text-slate-300 font-semibold py-3 text-center hover:border-accent/50 hover:text-accent-soft transition"
+        >
+          JSON surface
+        </a>
+      </div>
+
+      <p className="mt-4 text-xs text-slate-500 text-center">
+        Every surface above is a renderer over the same Identity Manifest.
+      </p>
+    </div>
+  );
+}
+
 function adminHeaders(): Record<string, string> {
   const token = localStorage.getItem("links-admin-token");
   return token ? { Authorization: `Bearer ${token}` } : {};
@@ -211,21 +309,7 @@ export default function ClaimPage(): React.ReactElement {
                 </button>
               </>
             ) : (
-              <>
-                <p className="text-slate-400 mt-3">Live. Share it everywhere:</p>
-                <a
-                  href={`/${claimed.handle}`}
-                  className="mt-6 block w-full rounded-xl border border-accent/50 text-accent-soft font-bold py-3.5 text-lg hover:bg-accent/10 transition"
-                >
-                  links/{claimed.handle} →
-                </a>
-                <a
-                  href={`/${claimed.handle}?format=json`}
-                  className="mt-3 block text-sm text-slate-400 underline underline-offset-4"
-                >
-                  the same identity as JSON — every surface is a renderer
-                </a>
-              </>
+              <ShareKit handle={claimed.handle} />
             )}
           </div>
         )}

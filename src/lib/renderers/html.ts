@@ -9,7 +9,15 @@
 import type { Block, IdentityManifest } from "../identity";
 import { defineRenderer, type RenderContext } from "../registry";
 
-const THEMES: Record<string, { bg: string; card: string; text: string; sub: string; accent: string }> = {
+export interface ThemePalette {
+  bg: string;
+  card: string;
+  text: string;
+  sub: string;
+  accent: string;
+}
+
+export const THEMES: Record<string, ThemePalette> = {
   midnight: { bg: "#070a12", card: "#11162299", text: "#f8fafc", sub: "#94a3b8", accent: "#22d3ee" },
   terminal: { bg: "#05080a", card: "#0c141066", text: "#e2f9ee", sub: "#6ee7b7", accent: "#34d399" },
   violet:   { bg: "#0b0714", card: "#1a112999", text: "#f5f3ff", sub: "#a78bfa", accent: "#8b5cf6" },
@@ -21,7 +29,7 @@ const THEMES: Record<string, { bg: string; card: string; text: string; sub: stri
   slate:    { bg: "#0b1017", card: "#151d2999", text: "#f1f5f9", sub: "#94a3b8", accent: "#38bdf8" },
 };
 
-function esc(s: unknown): string {
+export function esc(s: unknown): string {
   return String(s ?? "")
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
@@ -30,7 +38,7 @@ function esc(s: unknown): string {
     .replaceAll("'", "&#39;");
 }
 
-function safeUrl(u: unknown): string {
+export function safeUrl(u: unknown): string {
   const s = String(u ?? "");
   if (/^(https?:|mailto:|tel:)/i.test(s)) return s;
   return "#";

@@ -116,10 +116,18 @@ Every published identity renders through the registry:
 | URL | Renderer |
 | --- | --- |
 | `/:handle` | Profile page (server-rendered, mobile-first, zero client JS) |
+| `/:handle?format=card` | Digital business card — screen-shareable, print-true at 3.5in × 2in |
+| `/:handle?format=qr` | Print-grade QR (SVG; `&type=png&size=…` for PNG, `&download=1` to save) |
+| `/:handle?format=vcard` | Importable contact (vCard 3.0, stable UID — re-downloads update, never duplicate) |
 | `/:handle?format=json` | The Identity Manifest as structured JSON |
 | `/go/:identityId/:blockId?to=…` | Click-tracked outbound redirect |
 
-Business card, QR, and vCard renderers land next — track the
+Publishing yields the full share kit at once: share URL, downloadable QR (SVG + PNG),
+save-contact vCard, business card, and social preview tags. Every QR encodes `?src=qr`,
+so scans land as events distinct from taps — `FROM events WHERE kind = "profile_view"
+GROUP BY source COUNT` answers "salon counter vs Instagram bio" straight from the engine.
+
+More surfaces land through the same registry — track the
 [issues](../../issues) for the living backlog. No roadmap documents; shipped code and
 open issues only.
 
