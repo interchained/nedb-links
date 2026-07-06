@@ -58,6 +58,7 @@ const BLOCK_ICONS: Record<string, LucideIcon> = {
   text: AlignLeft,
   social: Share2,
   embed: Play,
+  surfaces: ExternalLink,
 };
 
 function str(v: unknown): string {
@@ -75,6 +76,11 @@ function blockSummary(b: Block): string {
       return str(d.text).slice(0, 64) || "empty";
     case "embed":
       return str(d.url) || "no media yet";
+    case "surfaces": {
+      const on = ["vcard", "qr", "card"].filter((k) => d[k] !== false).length +
+        ["md", "json"].filter((k) => d[k] === true).length;
+      return `${on} format${on === 1 ? "" : "s"} offered`;
+    }
     case "social": {
       const links = Array.isArray(d.links) ? d.links.length : 0;
       return `${links} network${links === 1 ? "" : "s"}`;
@@ -289,6 +295,45 @@ function BlockFields({
           <button onClick={() => setLinks([...links, { network: "", url: "https://" }])} className="justify-self-start text-xs font-semibold text-accent-soft hover:underline underline-offset-4">
             + add social link
           </button>
+        </div>
+      );
+    }
+    case "surfaces": {
+      const FLAGS = [
+        ["vcard", "Save contact (vCard)", true],
+        ["qr", "QR code", true],
+        ["card", "Business card", true],
+        ["md", "Markdown (LLM-readable)", false],
+        ["json", "JSON", false],
+      ] as const;
+      return (
+        <div className="grid gap-3">
+          <div>
+            <label className="label">Title (optional)</label>
+            <input
+              className="field"
+              value={str(d.title)}
+              placeholder="Save & share"
+              onChange={(e) => onChange({ ...d, title: e.target.value })}
+            />
+          </div>
+          <div className="flex flex-wrap gap-x-5 gap-y-2">
+            {FLAGS.map(([key, label, dflt]) => (
+              <label key={key} className="flex items-center gap-2 text-sm cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={d[key] === undefined ? dflt : Boolean(d[key])}
+                  onChange={(e) => onChange({ ...d, [key]: e.target.checked })}
+                  className="accent-[rgb(var(--accent))] w-4 h-4"
+                />
+                {label}
+              </label>
+            ))}
+          </div>
+          <p className="text-[11px] text-fg-subtle">
+            Chips linking this profile's other formats — visitors save your contact,
+            grab the QR, or point an AI at the markdown.
+          </p>
         </div>
       );
     }

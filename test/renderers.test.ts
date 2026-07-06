@@ -377,3 +377,25 @@ test("soc: icon tokens: brand SVG in the chip, raw tokens never leak", () => {
   assert.ok(html.includes('<span class="ic">✂</span>'), "text glyphs unchanged");
   assert.ok(html.includes(".ic svg"), "chip svg sizing ships with the page css");
 });
+
+test("surfaces block: chips honor toggles; head carries alternate links", () => {
+  const m = fixture({
+    blocks: [
+      { id: "blk_sf", type: "surfaces", order: 0, data: { title: "Save & share", md: true, qr: false } },
+    ],
+  });
+  const html = renderProfileHtml(m, CTX);
+
+  // Human trio defaults ON (qr explicitly off here); machine surfaces opt-in.
+  assert.ok(html.includes("?format=vcard") && html.includes("📇 Save contact"), "vCard chip on by default");
+  assert.ok(html.includes("?format=card"), "card chip on by default");
+  assert.equal(html.includes("▦ QR code"), false, "qr:false removes its chip");
+  assert.ok(html.includes(".md") && html.includes("📄 Markdown"), "md:true adds the markdown chip");
+  assert.equal(html.includes("〈/〉 JSON"), false, "json stays opt-in");
+  assert.ok(html.includes('<h2 class="hd">Save &amp; share</h2>'), "optional title renders escaped");
+
+  // Machine-discoverable on EVERY page, block or not: alternate links in head.
+  const plain = renderProfileHtml(fixture(), CTX);
+  assert.ok(plain.includes('rel="alternate" type="text/markdown"'), "md alternate link always present");
+  assert.ok(plain.includes('rel="alternate" type="application/json"'), "json alternate link always present");
+});

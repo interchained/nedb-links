@@ -79,3 +79,21 @@ export const textBlock = defineBlock({
   }),
   defaults: () => ({ text: "" }),
 });
+
+export const surfacesBlock = defineBlock({
+  type: "surfaces",
+  name: "Save & share",
+  description: "Your profile in every format — vCard, QR, business card, and machine surfaces.",
+  capabilities: ["shareable", "exportable", "printable"],
+  schema: z.object({
+    title: z.string().max(80).optional(),
+    // The human trio defaults ON (undefined = on); the machine surfaces
+    // default OFF (must be explicitly true) — see the renderer.
+    vcard: z.boolean().optional(),
+    qr: z.boolean().optional(),
+    card: z.boolean().optional(),
+    md: z.boolean().optional(),
+    json: z.boolean().optional(),
+  }),
+  defaults: () => ({ title: "", vcard: true, qr: true, card: true, md: false, json: false }),
+});
