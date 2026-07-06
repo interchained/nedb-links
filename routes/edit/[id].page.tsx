@@ -6,6 +6,7 @@ import {
   ArrowLeft,
   ArrowUp,
   ArrowUpRight,
+  BarChart3,
   Check,
   Copy,
   ExternalLink,
@@ -395,6 +396,13 @@ export default function EditPage(): React.ReactElement {
             </span>
           </div>
           <div className="flex items-center gap-2">
+            <Link
+              href={`/analytics/${encodeURIComponent(manifest.identityId)}`}
+              className="icon-btn"
+              title="Analytics — views, scans, clicks"
+            >
+              <BarChart3 size={16} />
+            </Link>
             {published && (
               <a href={`/${manifest.handle}`} target="_blank" rel="noopener noreferrer" className="btn btn-ghost !px-3">
                 <ExternalLink size={15} /> View

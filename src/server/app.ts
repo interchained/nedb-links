@@ -13,6 +13,7 @@ import cors from "cors";
 import express, { type Express, type NextFunction, type Request, type Response } from "express";
 
 import { accounts } from "./accounts";
+import { analytics } from "./analytics";
 import { billing, mountWebhook } from "./billing";
 import { config } from "./config";
 import { db } from "./db";
@@ -68,6 +69,7 @@ export function createApp(): Express {
   app.use("/api/auth", accounts);
   app.use("/api/billing", billing);
   app.use("/api/handles", handles);
+  app.use("/api/identities/:id/analytics", analytics);
   app.use("/api/identities/:id/grants", grants);
   app.use("/api/identities", identities);
   app.use("/api/preview", preview);

@@ -153,7 +153,7 @@ export const HANDLE_RE = /^[a-z0-9](?:[a-z0-9-]{1,38}[a-z0-9])?$/;
 export const RESERVED_HANDLES = new Set([
   "api", "go", "edit", "new", "claim", "admin", "app", "assets", "static",
   "health", "docs", "about", "settings", "login", "logout", "favicon",
-  "robots", "sitemap", "index", "links", "nedb",
+  "robots", "sitemap", "index", "links", "nedb", "analytics", "identities",
 ]);
 
 /** Handles are lowercase, 2-40 chars, alphanumeric plus inner hyphens. */

@@ -117,6 +117,22 @@ export default function IdentitiesPage(): React.ReactElement {
                 </div>
               </div>
               <div className="flex items-center gap-2 text-sm font-semibold">
+                <span
+                  role="link"
+                  tabIndex={0}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    window.location.href = `/analytics/${encodeURIComponent(idn.identityId)}`;
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") window.location.href = `/analytics/${encodeURIComponent(idn.identityId)}`;
+                  }}
+                  className="btn btn-ghost !py-1.5 !px-3"
+                  title="Analytics"
+                >
+                  Stats
+                </span>
                 {idn.status === "published" && (
                   <a
                     href={`/${idn.handle}`}
