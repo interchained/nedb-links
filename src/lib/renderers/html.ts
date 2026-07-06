@@ -8,6 +8,7 @@
 
 import { FONTS, isFilledUrl, type Block, type IdentityManifest } from "../identity";
 import { defineRenderer, type RenderContext } from "../registry";
+import { socialGlyph } from "./social-icons";
 
 export interface ThemePalette {
   bg: string;
@@ -91,19 +92,10 @@ function renderBlock(b: Block, m: IdentityManifest, origin: string): string {
       const icon = d.icon ? `<span class="ic">${esc(d.icon)}</span>` : "";
       return `<a class="lk" href="${esc(go(origin, m, b.id, url))}" rel="noopener">${icon}<span>${esc(d.label)}</span></a>`;
     }
-    case "social": {
-      const links = (Array.isArray(d.links) ? (d.links as Array<Record<string, unknown>>) : []).filter(
-        (l) => isFilledUrl(l.url),
-      );
-      if (!links.length) return "";
-      const items = links
-        .map(
-          (l) =>
-            `<a class="so" href="${esc(go(origin, m, b.id, safeUrl(l.url)))}" rel="noopener">${esc(l.network)}</a>`,
-        )
-        .join("");
-      return `<div class="sr">${items}</div>`;
-    }
+    case "social":
+      // Social profiles are identity, not content — they render as the
+      // brand-icon row in the page header, not here.
+      return "";
     case "embed": {
       if (!isFilledUrl(d.url)) return "";
       const src = embedFrame(String(d.url ?? ""));
@@ -132,6 +124,32 @@ export function renderProfileHtml(m: IdentityManifest, ctx: RenderContext): stri
     .map((b) => renderBlock(b, m, origin))
     .join("\n");
   const fonts = fontAssets(m);
+
+  // The icon row — every filled social link across the manifest, brand
+  // glyph auto-detected, click-tracked, right under the bio. The second
+  // thing a visitor sees.
+  const socialLinks = m.blocks
+    .filter((b) => b.type === "social")
+    .flatMap((b) => {
+      const links = Array.isArray((b.data as Record<string, unknown>).links)
+        ? ((b.data as Record<string, unknown>).links as Array<Record<string, unknown>>)
+        : [];
+      return links
+        .filter((l) => isFilledUrl(l.url))
+        .map((l) => ({
+          blockId: b.id,
+          network: String(l.network ?? ""),
+          url: safeUrl(l.url),
+        }));
+    });
+  const socialRow = socialLinks.length
+    ? `<div class="si">${socialLinks
+        .map((l) => {
+          const g = socialGlyph(l.network, l.url);
+          return `<a class="sb" href="${esc(go(origin, m, l.blockId, l.url))}" rel="noopener" title="${esc(g.label)}" aria-label="${esc(g.label)}"><svg viewBox="0 0 24 24" role="img" aria-hidden="true">${g.inner}</svg></a>`;
+        })
+        .join("")}</div>`
+    : "";
 
   return `<!doctype html>
 <html lang="en">
@@ -177,9 +195,15 @@ ${fonts.link}
         -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
   .lk:hover { transform: translateY(-1px); border-color: ${t.accent}66; }
   .ic { color: ${t.accent}; }
-  .sr { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin: 14px 0; }
-  .so { color: ${t.accent}; text-decoration: none; font-size: 14px; font-weight: 600;
-        border: 1px solid ${t.accent}33; border-radius: 999px; padding: 7px 14px; }
+  .si { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 16px; }
+  .sb { width: 44px; height: 44px; border-radius: 50%;
+        display: inline-flex; align-items: center; justify-content: center;
+        color: ${t.accent}; background: ${t.card};
+        border: 1px solid ${t.accent}33; text-decoration: none;
+        transition: transform 0.12s ease, border-color 0.12s ease;
+        -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+  .sb:hover { transform: translateY(-2px); border-color: ${t.accent}88; }
+  .sb svg { width: 21px; height: 21px; fill: currentColor; }
   .em { margin: 10px 0; border-radius: 14px; overflow: hidden; aspect-ratio: 16/9; }
   .em iframe { width: 100%; height: 100%; border: 0; }
   footer { text-align: center; margin-top: 40px; }
@@ -194,6 +218,7 @@ ${fonts.link}
     <h1>${esc(m.displayName)}</h1>
     <div class="hn">@${esc(m.handle)}</div>
     ${m.bio ? `<p class="bio">${esc(m.bio)}</p>` : ""}
+    ${socialRow}
   </header>
   <section>
 ${blocks}

@@ -209,7 +209,7 @@ test("placeholder URLs are saveable but never rendered on any surface", async ()
   const html = renderProfileHtml(m, CTX);
   assert.equal(html.includes("Unfilled template link"), false, "placeholder link hidden");
   assert.ok(html.includes("Real link"), "filled link renders");
-  assert.equal(html.includes('class="sr"'), false, "social row with only placeholders hidden");
+  assert.equal(html.includes('class="si"'), false, "social icon row with only placeholders hidden");
   assert.equal(html.includes('class="em"'), false, "placeholder embed hidden");
 
   const v = buildVcard(m, CTX.origin);
@@ -272,4 +272,36 @@ test("mach theme — chrome-on-gunmetal renderer palette", () => {
   const html = renderProfileHtml(fixture({ theme: "mach" }), CTX);
   assert.ok(html.includes("#0b0d11"), "gunmetal canvas");
   assert.ok(html.includes("#cbd5e1"), "chrome accent");
+});
+
+// ── Social header icons — identity, not content ──────────────────────────────
+
+test("social links render as brand-icon buttons in the header, click-tracked", () => {
+  const html = renderProfileHtml(fixture(), CTX);
+  assert.ok(html.includes('class="si"'), "icon row renders in the header");
+  assert.ok(html.includes('class="sb"'), "icon buttons present");
+  assert.ok(html.includes('aria-label="Instagram"'), "accessible label from the typed name");
+  assert.ok(html.includes("<svg"), "real SVG glyphs, zero JS");
+  assert.ok(html.includes("/go/idn_test1234567890abcdef/blk_4?to="), "icons stay click-tracked");
+  // The old mid-page text pills are gone.
+  assert.equal(html.includes('class="sr"'), false, "no text-pill social row remains");
+});
+
+test("socialGlyph: name match, aliases, hostname detection, honest fallbacks", async () => {
+  const { socialGlyph } = await import("../src/lib/renderers/social-icons");
+  // Typed name wins.
+  assert.ok(socialGlyph("instagram", "https://x.com/nope").inner.includes("<path"), "known name → path");
+  // Alias resolves.
+  assert.equal(socialGlyph("twitter", "https://").label, "twitter");
+  assert.ok(socialGlyph("twitter", "https://").inner.includes("<path"), "twitter → X glyph");
+  // Hostname rescues a vague name.
+  assert.ok(socialGlyph("me", "https://instagram.com/marisa").inner.includes("<path"), "instagram.com detected");
+  // mailto → email glyph.
+  assert.ok(socialGlyph("", "mailto:hi@example.com").inner.includes("<path"), "mailto → email glyph");
+  // Unknown → letter badge, never a wrong brand mark.
+  const weird = socialGlyph("myspaceish", "https://weird.example");
+  assert.ok(weird.inner.includes("<text"), "unknown network → honest letter badge");
+  assert.equal(weird.label, "myspaceish");
+  // Empty everything → globe.
+  assert.ok(socialGlyph("", "https://somewhere.example").inner.includes("<path"), "bare url → globe");
 });
