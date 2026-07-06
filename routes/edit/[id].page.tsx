@@ -366,16 +366,14 @@ export default function EditPage(): React.ReactElement {
 
   return (
     <>
-      <Nav />
-
-      {/* ── Studio action bar — one dense line; Publish is THE button ────── */}
-      <div className="streamline sticky top-12 z-10 border-b border-ink-800 bg-ink-950/85 backdrop-blur">
-        <div className="max-w-7xl mx-auto px-5 py-2 flex flex-wrap items-center gap-x-3 gap-y-1.5 justify-between">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <Link href="/identities" className="icon-btn shrink-0" title="All identities">
-              <ArrowLeft size={16} />
+      {/* ONE nav — the editor projects its identity + commands into it. */}
+      <Nav
+        context={
+          <>
+            <Link href="/identities" className="icon-btn !w-7 !h-7 shrink-0" title="All identities">
+              <ArrowLeft size={15} />
             </Link>
-            <h1 className="font-display text-base font-bold truncate">
+            <h1 className="font-display text-sm font-bold truncate">
               {manifest.displayName}
             </h1>
             <span className="hidden sm:inline font-mono text-[11px] text-accent-soft truncate shrink-0">
@@ -392,30 +390,38 @@ export default function EditPage(): React.ReactElement {
               {published ? "Live" : "Draft"}
               {dirty ? " · unsaved" : ""}
             </span>
-          </div>
-          <div className="flex items-center gap-1.5">
+          </>
+        }
+        actions={
+          <>
             <Link
               href={`/analytics/${encodeURIComponent(manifest.identityId)}`}
-              className="icon-btn"
+              className="icon-btn !w-7 !h-7"
               title="Analytics — views, scans, clicks"
             >
-              <BarChart3 size={16} />
+              <BarChart3 size={15} />
             </Link>
             {published && (
-              <a href={`/${manifest.handle}`} target="_blank" rel="noopener noreferrer" className="btn btn-ghost !py-1.5 !px-2.5">
-                <ExternalLink size={14} /> View
+              <a
+                href={`/${manifest.handle}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="icon-btn !w-7 !h-7"
+                title="View live page"
+              >
+                <ExternalLink size={15} />
               </a>
             )}
-            <button onClick={() => void save()} disabled={busy !== null || !dirty} className="btn btn-secondary !py-1.5" title="⌘S">
+            <button onClick={() => void save()} disabled={busy !== null || !dirty} className="btn btn-secondary !py-1.5 !px-3" title="⌘S">
               {busy === "save" ? "Saving…" : "Save"}
             </button>
-            <button onClick={() => void publish()} disabled={busy !== null} className="btn btn-primary !py-1.5">
+            <button onClick={() => void publish()} disabled={busy !== null} className="btn btn-primary !py-1.5 !px-3">
               {busy === "publish" ? "Publishing…" : published ? "Republish" : "Publish"}
               <ArrowUpRight size={14} />
             </button>
-          </div>
-        </div>
-      </div>
+          </>
+        }
+      />
 
       <main className="max-w-7xl mx-auto px-5 py-8">
         {/* Engine receipt — provenance made visible, quietly */}
@@ -670,7 +676,7 @@ export default function EditPage(): React.ReactElement {
           </section>
 
           {/* ── Right: the hero — a floating device, always alive ─────────── */}
-          <aside className="lg:sticky lg:top-24">
+          <aside className="lg:sticky lg:top-16">
             <div className="device max-w-[390px] mx-auto">
               <div className="device-notch" />
               <div className="device-screen">
