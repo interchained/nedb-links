@@ -24,11 +24,20 @@ type Step = "welcome" | "create" | "confirm" | "import" | "signing";
 
 async function loginWithPhrase(phrase: string): Promise<string> {
   const { address } = await deriveAccount(phrase);
-  const chalRes = await fetch("/api/auth/challenge", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ address }),
-  });
+  let chalRes: Response;
+  try {
+    chalRes = await fetch("/api/auth/challenge", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ address }),
+    });
+  } catch {
+    // fetch() rejected — the server is unreachable (not an HTTP error).
+    // Raw "Failed to fetch" is useless to a human; say what to check.
+    throw new Error(
+      "Can't reach the server. Your words are fine — the connection isn't. Try again in a moment (self-hosting? check the api process).",
+    );
+  }
   if (!chalRes.ok) throw new Error("could not start sign-in — is the server up?");
   const chal = (await chalRes.json()) as { challengeId: string; message: string };
   const signature = await signMessage(phrase, chal.message);

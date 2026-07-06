@@ -1,5 +1,5 @@
 import { resolve } from "node:path";
-import { defineConfig, loadEnv, type Plugin } from "vite";
+import { defineConfig, loadEnv, type Plugin, type ProxyOptions } from "vite";
 import react from "@vitejs/plugin-react";
 import { portalPlugin } from "@interchained/portal-core/vite";
 
@@ -35,10 +35,14 @@ function portalRouteResolver(): Plugin {
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
 
-  // PORT      = Express API server (used by `npm run start` and `npm run dev:api`)
-  // VITE_PORT = Vite dev client (what the browser connects to in dev, default 3000)
-  // LINKS_API_URL = full override for the API proxy target (optional)
-  const apiPort   = env.PORT      || "3001";
+  // LINKS_API_PORT = Express API server (canonical; falls back to PORT)
+  // VITE_PORT      = Vite dev client (what the browser connects to in dev)
+  // LINKS_API_URL  = full override for the API proxy target (optional)
+  // The API resolves its port with the SAME chain (src/server/config.ts) —
+  // if you change ports in .env, both sides move together. The dev-api
+  // wrapper restarts the API on .env changes so it can never lag behind
+  // a Vite env-triggered restart.
+  const apiPort   = env.LINKS_API_PORT || env.PORT || "3001";
   const clientPort = Number(env.VITE_PORT || 3000);
   const apiTarget = env.LINKS_API_URL || `http://localhost:${apiPort}`;
 
@@ -56,18 +60,35 @@ export default defineConfig(({ mode }) => {
     return SPA_PREFIXES.some((p) => path === p || path.startsWith(`${p}/`));
   }
 
+  /** ECONNREFUSED with a hint instead of a bare stack — the #1 dev trap
+   *  is the API listening on a different port than the proxy targets. */
+  function proxyHints(proxy: Parameters<NonNullable<ProxyOptions["configure"]>>[0]): void {
+    let warned = 0;
+    proxy.on("error", (err) => {
+      if (Date.now() - warned < 2000) return; // rate-limit the hint
+      warned = Date.now();
+      console.error(
+        `\n[links] API proxy → ${apiTarget} failed: ${err.message}\n` +
+          `        Is the [api] process running? If you changed ports in .env,\n` +
+          `        restart \`npm run dev\` — or rely on the dev-api wrapper,\n` +
+          `        which restarts the API on .env changes automatically.\n`,
+      );
+    });
+  }
+
   return {
     plugins: [react(), portalPlugin(), portalRouteResolver()],
     server: {
       port: clientPort,
       allowedHosts: true,
       proxy: {
-        "/api": { target: apiTarget, changeOrigin: true },
+        "/api": { target: apiTarget, changeOrigin: true, configure: proxyHints },
         // Catch-all: public surfaces render on the API server in dev too.
         "/": {
           target: apiTarget,
           changeOrigin: true,
           bypass: (req) => (req.url && servedByVite(req.url) ? req.url : undefined),
+          configure: proxyHints,
         },
       },
     },

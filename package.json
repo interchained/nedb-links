@@ -8,7 +8,7 @@
   "scripts": {
     "dev": "concurrently -n web,api -c cyan,magenta \"portal dev\" \"npm run dev:api\"",
     "dev:web": "portal dev",
-    "dev:api": "tsx watch server.ts",
+    "dev:api": "node dev-api.mjs",
     "build": "portal build",
     "preview": "portal preview",
     "serve": "portal serve",

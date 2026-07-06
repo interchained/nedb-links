@@ -37,8 +37,25 @@ const { warnIfOpen } = await import("./src/server/auth");
 // every write on the happy path. Proper fix lands engine-side.
 await ensureDatabase();
 
-createApp().listen(config.port, () => {
+const server = createApp().listen(config.port, () => {
   console.log(`\x1b[36m⬡ NEDB Links\x1b[0m listening on :${config.port}`);
   console.log(`  nedbd → ${config.nedbUrl} (db: ${config.nedbDb})`);
   warnIfOpen();
+});
+
+// The #1 boot killer is a port collision (PORT is read by many tools —
+// vite included). Die LOUD and actionable, never with a bare stack.
+server.on("error", (err: NodeJS.ErrnoException) => {
+  if (err.code === "EADDRINUSE") {
+    console.error(
+      `\x1b[31m[links] port ${config.port} is already in use.\x1b[0m\n` +
+        `  Another process (the Vite dev client? a second links instance?) holds it.\n` +
+        `  Fix: set LINKS_API_PORT to a free port in .env — the dev proxy follows\n` +
+        `  the same variable automatically. (Generic PORT also works but is read\n` +
+        `  by other tools; LINKS_API_PORT is unambiguous.)`,
+    );
+  } else {
+    console.error(`[links] server error: ${err.message}`);
+  }
+  process.exit(1);
 });

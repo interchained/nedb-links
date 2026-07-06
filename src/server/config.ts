@@ -38,7 +38,9 @@ export interface LinksConfig {
 
 export function loadConfig(): LinksConfig {
   return {
-    port: Number(process.env.PORT || 3001),
+    // LINKS_API_PORT is canonical — the generic PORT is read by many
+    // tools (vite, PaaS runtimes) and port collisions/skew follow.
+    port: Number(process.env.LINKS_API_PORT || process.env.PORT || 3001),
     nedbUrl: process.env.NEDB_URL || "http://127.0.0.1:7070",
     nedbDb: process.env.NEDB_DB || "links",
     nedbToken: process.env.NEDB_TOKEN || undefined,
