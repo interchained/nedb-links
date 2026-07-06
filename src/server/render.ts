@@ -15,6 +15,7 @@ import { COLLECTIONS } from "../lib/identity";
 import { getRenderer } from "../lib/registry";
 import "../lib/renderers/html";
 import "../lib/renderers/json";
+import "../lib/renderers/markdown";
 import "../lib/renderers/qr";
 import "../lib/renderers/vcard";
 import "../lib/renderers/card";
@@ -55,8 +56,15 @@ render.get("/go/:identityId/:blockId", (req, res) => {
 
 /** GET /:handle — the public identity, through whichever renderer is asked for. */
 render.get("/:handle", wrap(async (req, res, next) => {
-  const raw = String(req.params.handle).toLowerCase();
-  // Anything with a dot is a file request (favicon.ico etc.) — not a handle.
+  let raw = String(req.params.handle).toLowerCase();
+  // /:handle.md — the URL shape LLM agents guess. Same identity, the
+  // markdown renderer, no query grammar needed.
+  let suffixFormat: string | null = null;
+  if (raw.endsWith(".md")) {
+    suffixFormat = "md";
+    raw = raw.slice(0, -3);
+  }
+  // Anything else with a dot is a file request (favicon.ico etc.) — not a handle.
   if (raw.includes(".")) {
     next();
     return;
@@ -68,11 +76,12 @@ render.get("/:handle", wrap(async (req, res, next) => {
     return;
   }
   // Renamed handle: send visitors (and old QR codes) to the new branding.
+  // A .md suffix survives the rename — machine URLs redirect like any other.
   if (resolved.redirected) {
     const qs = req.originalUrl.includes("?")
       ? req.originalUrl.slice(req.originalUrl.indexOf("?"))
       : "";
-    res.redirect(301, `/${resolved.record.handle}${qs}`);
+    res.redirect(301, `/${resolved.record.handle}${suffixFormat ? ".md" : ""}${qs}`);
     return;
   }
 
@@ -82,7 +91,7 @@ render.get("/:handle", wrap(async (req, res, next) => {
     return;
   }
 
-  const format = typeof req.query.format === "string" ? req.query.format : "html";
+  const format = suffixFormat ?? (typeof req.query.format === "string" ? req.query.format : "html");
   const renderer = getRenderer(format);
   if (!renderer) {
     res.status(400).json({ error: `unknown renderer: ${format}` });

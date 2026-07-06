@@ -321,6 +321,22 @@ test("every registered surface answers on the wire", async () => {
 
   const json = (await (await fetch(`${base}/smoketest?format=json`)).json()) as { manifest: { handle: string } };
   assert.equal(json.manifest.handle, "smoketest");
+
+  // The sixth surface: markdown, via query grammar AND the .md suffix
+  // LLM agents guess. Front matter first, formats section always present.
+  const mdq = await fetch(`${base}/smoketest?format=md`);
+  assert.equal(mdq.status, 200);
+  assert.match(mdq.headers.get("content-type") ?? "", /text\/markdown/);
+  const mdBody = await mdq.text();
+  assert.ok(mdBody.startsWith("---\n"), "front matter opens the document");
+  assert.ok(mdBody.includes('handle: "smoketest"'));
+  assert.ok(mdBody.includes("## This profile in other formats"));
+  assert.equal(mdBody.includes("/go/"), false, "direct URLs — no tracking redirects on the machine surface");
+
+  const mds = await fetch(`${base}/smoketest.md`);
+  assert.equal(mds.status, 200, "/:handle.md answers");
+  assert.match(mds.headers.get("content-type") ?? "", /text\/markdown/);
+  assert.ok((await mds.text()).includes('handle: "smoketest"'), "suffix and query grammar agree");
 });
 
 test("clicks redirect and analytics aggregate in the engine", async () => {

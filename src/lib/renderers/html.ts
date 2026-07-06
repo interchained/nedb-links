@@ -159,6 +159,21 @@ function renderBlock(b: Block, m: IdentityManifest, origin: string): string {
       // Social profiles are identity, not content — they render as the
       // brand-icon row in the page header, not here.
       return "";
+    case "surfaces": {
+      // The Save & share module: this identity's sibling surfaces as
+      // tappable chips. Human trio (vCard/QR/card) defaults ON when
+      // undefined; machine surfaces (md/JSON) must be explicitly true.
+      const page = `${origin}/${esc(m.handle)}`;
+      const chips: string[] = [];
+      if (d.vcard !== false) chips.push(`<a class="sfb" href="${page}?format=vcard">📇 Save contact</a>`);
+      if (d.qr !== false) chips.push(`<a class="sfb" href="${page}?format=qr">▦ QR code</a>`);
+      if (d.card !== false) chips.push(`<a class="sfb" href="${page}?format=card">🪪 Business card</a>`);
+      if (d.md === true) chips.push(`<a class="sfb" href="${page}.md">📄 Markdown</a>`);
+      if (d.json === true) chips.push(`<a class="sfb" href="${page}?format=json">〈/〉 JSON</a>`);
+      if (!chips.length) return "";
+      const title = d.title ? `<h2 class="hd">${esc(d.title)}</h2>` : "";
+      return `${title}<div class="sf">${chips.join("")}</div>`;
+    }
     case "embed": {
       if (!isFilledUrl(d.url)) return "";
       const src = embedFrame(String(d.url ?? ""));
@@ -230,6 +245,9 @@ export function renderProfileHtml(m: IdentityManifest, ctx: RenderContext): stri
 <meta property="og:url" content="${url}" />
 <meta name="twitter:card" content="summary" />
 <link rel="canonical" href="${url}" />
+<link rel="alternate" type="text/markdown" href="${url}.md" title="Markdown" />
+<link rel="alternate" type="application/json" href="${url}?format=json" title="JSON" />
+<link rel="alternate" type="text/vcard" href="${url}?format=vcard" title="vCard" />
 ${fonts.link}
 <style>
   :root { color-scheme: dark light; }
@@ -301,6 +319,17 @@ ${fonts.link}
   .ar { flex: none; color: ${t.accent}; opacity: 0.55; font-weight: 700;
         transition: transform 0.15s ease, opacity 0.15s ease; }
   .lk:hover .ar { transform: translateX(3px); opacity: 1; }
+
+  /* Save & share chips — sibling surfaces as quiet pills. */
+  .sf { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin: 12px 0; }
+  .sfb { display: inline-flex; align-items: center; gap: 7px;
+         padding: 9px 15px; border-radius: 999px; font-weight: 600; font-size: 13.5px;
+         background: ${t.card}; color: ${t.text}; text-decoration: none;
+         border: 1px solid ${t.accent}26;
+         box-shadow: 0 1px 2px rgba(0,0,0,0.08), 0 6px 18px -10px ${t.accent}40;
+         transition: transform 0.15s ease, border-color 0.15s ease;
+         -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+  .sfb:hover { transform: translateY(-2px); border-color: ${t.accent}77; }
 
   .si { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 18px; }
   .sb { width: 44px; height: 44px; border-radius: 50%;
