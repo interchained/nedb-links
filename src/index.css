@@ -169,6 +169,13 @@ html,
 body {
   @apply bg-ink-950 text-fg antialiased;
   font-family: var(--font-body);
+  /* Mobile guarantee: any child poking past the right edge would
+   * stretch the layout viewport — the page zooms out and the nav looks
+   * narrower than the content (the IMG_2773 bug). clip (NOT hidden — it
+   * creates no scroll container) makes that class of bug impossible:
+   * offenders get clipped instead of resizing the world. Root causes
+   * still get fixed when found; this is the seatbelt. */
+  overflow-x: clip;
 }
 
 /* ── mach signature effects — pure CSS3, invisible in other themes ── */

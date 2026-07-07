@@ -840,7 +840,11 @@ export default function EditPage(): React.ReactElement {
                     <div
                       key={b.id}
                       data-bi={i}
-                      className={`panel p-4 sm:p-5 ${drag?.from === i ? "drag-lift" : ""}`}
+                      // min-w-0: grid items default to min-width:auto, so the
+                      // nowrap summary URL would set the column's floor and
+                      // stretch the whole page on phones. Let the card shrink;
+                      // truncate does the rest.
+                      className={`panel p-4 sm:p-5 min-w-0 ${drag?.from === i ? "drag-lift" : ""}`}
                       style={dragStyle(i)}
                     >
                       <div className="flex items-center gap-3 mb-4">

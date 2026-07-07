@@ -146,12 +146,15 @@ export function AccessPanel({ identityId }: { identityId: string }): React.React
         ))}
       </div>
 
-      <div className="mt-3 grid grid-cols-[1fr_auto_auto] gap-2">
+      {/* minmax(0,1fr): a bare 1fr is minmax(auto,1fr) — the input's
+          intrinsic width sets a floor that stretches the page on phones.
+          Found with a layout bisector; keep the 0. */}
+      <div className="mt-3 grid grid-cols-[minmax(0,1fr)_auto_auto] gap-2">
         <input
           value={address}
           onChange={(e) => setAddress(e.target.value)}
           placeholder={emailMode ? "email to share with" : "itc1q… address to share with"}
-          className="bg-ink-850 border border-ink-700 rounded-lg px-3 py-2 text-sm font-mono outline-none focus:border-accent/60 text-fg placeholder:text-fg-faint"
+          className="min-w-0 bg-ink-850 border border-ink-700 rounded-lg px-3 py-2 text-sm font-mono outline-none focus:border-accent/60 text-fg placeholder:text-fg-faint"
         />
         <select
           value={role}
