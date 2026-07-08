@@ -479,6 +479,28 @@ html.theme-fade *::after {
     .upgrade-ring::before, .upgrade-ring::after { animation: none; }
   }
 
+  /* The premium BADGE — the post-upgrade nav state. Solid brand-ramp
+     fill (same stops as the modal ring, so the visual language reads
+     as one continuous idea: outline invites, fill confirms), a soft
+     ambient glow instead of a static flat chip, subtle lift on hover.
+     This is the "actually feel premium" answer — never the same pixel
+     as the pre-upgrade ghost chip it replaces. */
+  @keyframes premium-glow {
+    0%, 100% { box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.25), 0 4px 14px -4px rgb(122 92 255 / 0.55); }
+    50%      { box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.25), 0 4px 18px -2px rgb(122 92 255 / 0.8); }
+  }
+  .premium-badge {
+    background: linear-gradient(135deg, #00c2ff, #3a7dff 45%, #7a5cff 75%, #b26cff);
+    color: #fff;
+    animation: premium-glow 3.5s ease-in-out infinite;
+    transition: transform 0.15s ease;
+  }
+  .premium-badge:hover { transform: translateY(-1px); }
+  .premium-badge:active { transform: translateY(0) scale(0.97); }
+  @media (prefers-reduced-motion: reduce) {
+    .premium-badge { animation: none; }
+  }
+
   /* Themed scrollbar for the modal's scroll container — a thin accent
      rail instead of the OS-default gray chrome, in every engine. */
   .modal-scroll {

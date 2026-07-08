@@ -1,9 +1,12 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "@interchained/portal-react";
+import { Crown } from "lucide-react";
 
 import { clearSession, getAddress, getEmail, getToken } from "../lib/api";
 import { useAppConfig } from "../lib/useAppConfig";
+import { useBillingStatus } from "../lib/useBillingStatus";
 import { requestUpgrade } from "../lib/upgrade";
+import { PremiumStatusModal } from "./PremiumModals";
 import { UpgradeModal } from "./UpgradeModal";
 import { applyTheme, getStoredTheme, getTheme, isThemeName } from "../lib/theme";
 
@@ -35,6 +38,8 @@ export function Nav({
   const brand = cfg?.brandName ?? "NEDB Links";
   const [address, setAddress] = useState<string | null>(null);
   const [email, setEmail] = useState<string | null>(null);
+  const { status: billing } = useBillingStatus();
+  const [showStatus, setShowStatus] = useState(false);
 
   useEffect(() => {
     setAddress(getAddress());
@@ -95,9 +100,23 @@ export function Nav({
           )}
         </div>
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-          {/* The business side, never buried: one persistent door to
-              premium wherever limits are on and someone is signed in. */}
-          {cfg?.limitEnabled && address && (
+          {/* The business side, never buried — but never static either.
+              Two real states: the upsell ghost chip pre-premium, a
+              solid brand-ramp BADGE post-premium. Gating on billing.
+              unlimited (not just limitEnabled+address) is the actual
+              fix — the chip used to render identically before and
+              after a real Stripe checkout succeeded. */}
+          {cfg?.limitEnabled && address && billing?.unlimited && (
+            <button
+              onClick={() => setShowStatus(true)}
+              className="premium-badge rounded-full px-3 py-1 text-[11px] font-bold inline-flex items-center gap-1"
+              title="You're Premium — tap to see your perks"
+            >
+              <Crown size={11} fill="currentColor" />
+              Premium
+            </button>
+          )}
+          {cfg?.limitEnabled && address && billing && !billing.unlimited && (
             <button
               onClick={() => requestUpgrade("generic")}
               className="chip text-[11px] font-semibold text-accent-soft hover:border-accent/50 transition"
@@ -138,6 +157,9 @@ export function Nav({
         </div>
       </div>
       <UpgradeModal />
+      {showStatus && billing?.unlimited && (
+        <PremiumStatusModal status={billing} onClose={() => setShowStatus(false)} />
+      )}
     </nav>
   );
 }
