@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from "react";
 
 import { getJson, postJson } from "../lib/api";
 import { useAppConfig } from "../lib/useAppConfig";
+import { notifyBillingChanged } from "../lib/useBillingStatus";
 
 /**
  * The upgrade moment — two doors, no rent.
@@ -42,6 +43,7 @@ export function UpgradeCard({ onUnlocked }: { onUnlocked?: () => void }): React.
     try {
       const s = await getJson<BillingStatus>("/api/billing/status");
       setStatus(s);
+      notifyBillingChanged(); // the Nav badge (and anyone else) picks up fresh status too
       if (s.unlimited) onUnlocked?.();
     } catch {
       setError("could not load upgrade options");

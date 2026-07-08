@@ -4,7 +4,9 @@ import { Link } from "@interchained/portal-react";
 import { Nav } from "../src/components/Nav";
 import { Footer } from "../src/components/Footer";
 import { Gate } from "../src/components/Gate";
+import { PremiumWelcomeModal } from "../src/components/PremiumModals";
 import { ApiError, getJson } from "../src/lib/api";
+import { notifyBillingChanged } from "../src/lib/useBillingStatus";
 
 export const intent = {
   purpose:
@@ -30,6 +32,20 @@ export default function IdentitiesPage(): React.ReactElement {
   const [identities, setIdentities] = useState<IdentitySummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [locked, setLocked] = useState(false);
+  const [justUpgraded, setJustUpgraded] = useState(false);
+
+  // The payoff moment for a real Stripe checkout: success_url lands
+  // here with ?upgraded=1. Strip it immediately (a refresh or back-nav
+  // must never re-trigger the celebration), tell every mounted
+  // useBillingStatus() to refetch (the Nav badge flips with zero
+  // reload), and show the welcome — a real purchase deserves a real
+  // moment, not silence.
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("upgraded") !== "1") return;
+    window.history.replaceState(null, "", window.location.pathname);
+    notifyBillingChanged();
+    setJustUpgraded(true);
+  }, []);
 
   const load = useCallback(async () => {
     setError(null);
@@ -62,6 +78,7 @@ export default function IdentitiesPage(): React.ReactElement {
   return (
     <>
       <Nav />
+      {justUpgraded && <PremiumWelcomeModal onClose={() => setJustUpgraded(false)} />}
       <main className="max-w-5xl mx-auto px-5 py-10">
         <header className="flex items-end justify-between">
           <div>
