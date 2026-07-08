@@ -317,6 +317,13 @@ export default function ClaimPage(): React.ReactElement {
     <Nav />
     <main className="min-h-screen flex flex-col items-center px-5 py-16">
       <header className="text-center max-w-2xl animate-slide-up">
+        {cfg?.brandLogoUrl && (
+          <img
+            src={cfg.brandLogoUrl}
+            alt=""
+            className="h-20 w-20 mx-auto mb-5 object-contain drop-shadow-[0_0_24px_rgba(99,102,241,0.45)]"
+          />
+        )}
         <p className="font-mono text-xs tracking-widest text-accent-soft uppercase">
           NEDB stores knowledge · Portal renders experiences · Links publishes identity
         </p>

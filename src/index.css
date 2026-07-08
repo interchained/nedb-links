@@ -463,6 +463,22 @@ html.theme-fade *::after {
     cursor: grabbing;
     color: rgb(var(--accent-soft));
   }
+  /* The upgrade modal shell — the dopamine kit, app-side. An animated
+     conic ring around the panel with a blurred bleed; the invitation
+     should FEEL like the unlock. Frozen under reduced-motion. */
+  @property --upang { syntax: "<angle>"; initial-value: 0deg; inherits: false; }
+  @keyframes upspin { to { --upang: 360deg; } }
+  .upgrade-ring { position: relative; border-radius: 20px; padding: 2px; }
+  .upgrade-ring::before, .upgrade-ring::after {
+    content: ""; position: absolute; inset: 0; border-radius: 20px; z-index: -1;
+    background: conic-gradient(from var(--upang), #00c2ff, #3a7dff, #7a5cff, #b26cff, #00c2ff);
+    animation: upspin 5s linear infinite;
+  }
+  .upgrade-ring::after { filter: blur(18px); opacity: 0.5; inset: -3px; }
+  @media (prefers-reduced-motion: reduce) {
+    .upgrade-ring::before, .upgrade-ring::after { animation: none; }
+  }
+
   /* The lifted card — riding the pointer above its siblings. */
   .drag-lift {
     box-shadow: 0 4px 10px rgb(0 0 0 / 0.1), 0 22px 44px -12px rgb(0 0 0 / 0.4);

@@ -3,6 +3,8 @@ import { Link } from "@interchained/portal-react";
 
 import { clearSession, getAddress, getEmail, getToken } from "../lib/api";
 import { useAppConfig } from "../lib/useAppConfig";
+import { requestUpgrade } from "../lib/upgrade";
+import { UpgradeModal } from "./UpgradeModal";
 import { applyTheme, getStoredTheme, getTheme, isThemeName } from "../lib/theme";
 
 /** itc1qxy2k…x0wlh — inline (keeps wallet crypto out of the nav bundle). */
@@ -93,6 +95,17 @@ export function Nav({
           )}
         </div>
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          {/* The business side, never buried: one persistent door to
+              premium wherever limits are on and someone is signed in. */}
+          {cfg?.limitEnabled && address && (
+            <button
+              onClick={() => requestUpgrade("generic")}
+              className="chip text-[11px] font-semibold text-accent-soft hover:border-accent/50 transition"
+              title="Go Premium — giveaways, Discover, the font vault, unlimited profiles"
+            >
+              ✨ Premium
+            </button>
+          )}
           {actions ?? (
             <Link href="/" className="btn btn-primary !py-1.5 !px-3.5">
               Claim
@@ -124,6 +137,7 @@ export function Nav({
           )}
         </div>
       </div>
+      <UpgradeModal />
     </nav>
   );
 }

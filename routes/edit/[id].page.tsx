@@ -35,6 +35,7 @@ import "../../src/lib/templates/builtin";
 import { ApiError, adminHeaders, fetchPreviewHtml, getJson, postJson, putJson } from "../../src/lib/api";
 import type { BackgroundConfig } from "../../src/lib/background";
 import { dragTarget, moveItem, siblingShift } from "../../src/lib/dragReorder";
+import { requestUpgrade } from "../../src/lib/upgrade";
 import { BRAND_IDS, SOC_PREFIX, brandGlyph } from "../../src/lib/renderers/social-icons";
 import { FONTS, newBlockId, type Block, type FontId, type IdentityManifest, type IdentityType } from "../../src/lib/identity";
 import { listBlocks } from "../../src/lib/registry";
@@ -830,8 +831,16 @@ export default function EditPage(): React.ReactElement {
       setDirty(false);
       return true;
     } catch (err) {
-      if (err instanceof ApiError && err.status === 401) setLocked(true);
-      else setError(err instanceof Error ? err.message : "save failed");
+      if (err instanceof ApiError && err.status === 401) {
+        setLocked(true);
+      } else if (err instanceof ApiError && err.code === "premium_required") {
+        // A premium wall is a doorway, not an error toast.
+        const msg = err.message.toLowerCase();
+        requestUpgrade(msg.includes("giveaway") ? "giveaway" : msg.includes("discover") ? "discover" : msg.includes("font") ? "font" : "generic");
+        setError(err.message);
+      } else {
+        setError(err instanceof Error ? err.message : "save failed");
+      }
       return false;
     } finally {
       setBusy(null);
