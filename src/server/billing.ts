@@ -61,9 +61,15 @@ export async function unlimitedStatus(auth: AuthContext): Promise<UnlimitedStatu
   if (!config.limitEnabled) return { unlimited: true, via: "unlimited-instance" };
   if (auth.isOperator) return { unlimited: true, via: "operator" };
   if (await getEntitlement(auth.address)) return { unlimited: true, via: "supporter" };
-  const itc = await confirmedItcBalance(auth.address);
-  if (itc !== null && itc >= config.itcThreshold) {
-    return { unlimited: true, via: "holder" };
+  // Holder status is a WALLET-mode concept: email principals (eml_…) have
+  // no chain address, and feeding one to the bech32 decoder is a category
+  // error ("Unknown character b" in production logs). Skip unless this is
+  // wallet mode AND the principal actually looks like an itc1 address.
+  if (config.authMode === "wallet" && auth.address.startsWith("itc1")) {
+    const itc = await confirmedItcBalance(auth.address);
+    if (itc !== null && itc >= config.itcThreshold) {
+      return { unlimited: true, via: "holder" };
+    }
   }
   return { unlimited: false, via: "none" };
 }
@@ -88,7 +94,9 @@ billing.get("/status", requireUser, wrap(async (_req, res) => {
   const [owned, status, itc] = await Promise.all([
     config.limitEnabled ? ownedProfileCount(auth.address) : Promise.resolve(0),
     unlimitedStatus(auth),
-    config.limitEnabled ? confirmedItcBalance(auth.address) : Promise.resolve(null),
+    config.limitEnabled && config.authMode === "wallet" && auth.address.startsWith("itc1")
+      ? confirmedItcBalance(auth.address)
+      : Promise.resolve(null),
   ]);
   res.json({
     limitEnabled: config.limitEnabled,
