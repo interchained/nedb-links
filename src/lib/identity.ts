@@ -162,7 +162,7 @@ export const RESERVED_HANDLES = new Set([
   "api", "go", "edit", "new", "claim", "admin", "app", "assets", "static",
   "health", "docs", "about", "settings", "login", "logout", "favicon",
   "robots", "sitemap", "index", "links", "nedb", "analytics", "identities",
-  "verify", "reset", "magic", "discover", "discovery",
+  "verify", "reset", "magic", "discover", "discovery", "r",
 ]);
 
 /** Handles are lowercase, 2-40 chars, alphanumeric plus inner hyphens. */
@@ -245,6 +245,8 @@ export const COLLECTIONS = {
   grants: "grants",
   entitlements: "entitlements",
   accounts: "accounts",
+  raffles: "raffles",
+  raffleEntries: "raffle_entries",
 } as const;
 
 /**

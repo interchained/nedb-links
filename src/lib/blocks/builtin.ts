@@ -97,3 +97,31 @@ export const surfacesBlock = defineBlock({
   }),
   defaults: () => ({ title: "", vcard: true, qr: true, card: true, md: false, json: false }),
 });
+
+export const giveawayBlock = defineBlock({
+  type: "giveaway",
+  name: "Giveaway",
+  description: "Host a provably fair giveaway — entrants become verified leads.",
+  capabilities: ["shareable", "interactive", "seo"],
+  schema: z.object({
+    /** Server-assigned on first save — links the block to its raffle doc. */
+    raffleId: z.string().max(40).optional(),
+    prize: z.string().min(1).max(120),
+    description: z.string().max(600).optional(),
+    image: z.string().max(200_000).optional(),
+    /** ISO datetime — entries stop here; validated server-side per entry. */
+    closesAt: z.string().max(40),
+    winners: z.number().int().min(1).max(20).default(1),
+    /** The owner's rules — the fine print, rendered on the entry page. */
+    rules: z.string().max(1200).optional(),
+    /** Scarcity cap — entries stop early when the spots fill. */
+    maxEntries: z.number().int().min(2).max(100000).optional(),
+  }),
+  defaults: () => ({
+    prize: "",
+    description: "",
+    image: "",
+    closesAt: new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString().slice(0, 16),
+    winners: 1,
+  }),
+});

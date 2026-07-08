@@ -10,6 +10,7 @@ import {
   Check,
   Copy,
   ExternalLink,
+  Gift,
   GripVertical,
   Heading2,
   ImagePlus,
@@ -31,7 +32,7 @@ import { Gate } from "../../src/components/Gate";
 import { Footer } from "../../src/components/Footer";
 import "../../src/lib/blocks/builtin";
 import "../../src/lib/templates/builtin";
-import { ApiError, fetchPreviewHtml, getJson, postJson, putJson } from "../../src/lib/api";
+import { ApiError, adminHeaders, fetchPreviewHtml, getJson, postJson, putJson } from "../../src/lib/api";
 import type { BackgroundConfig } from "../../src/lib/background";
 import { dragTarget, moveItem, siblingShift } from "../../src/lib/dragReorder";
 import { BRAND_IDS, SOC_PREFIX, brandGlyph } from "../../src/lib/renderers/social-icons";
@@ -54,6 +55,7 @@ interface SaveReceipt {
 }
 
 const BLOCK_ICONS: Record<string, LucideIcon> = {
+  giveaway: Gift,
   link: Link2,
   header: Heading2,
   text: AlignLeft,
@@ -70,6 +72,11 @@ function str(v: unknown): string {
 function blockSummary(b: Block): string {
   const d = b.data;
   switch (b.type) {
+    case "giveaway": {
+      if (!str(d.raffleId)) return "saves as a provably fair giveaway";
+      const closed = d.closesAt ? Date.now() >= new Date(str(d.closesAt)).getTime() : false;
+      return closed ? "closed — draw when ready" : `open until ${new Date(str(d.closesAt)).toLocaleString()}`;
+    }
     case "link":
       return str(d.url) || "no url yet";
     case "header":
@@ -94,6 +101,8 @@ function blockSummary(b: Block): string {
 function blockTitle(b: Block, fallback: string): string {
   const d = b.data;
   switch (b.type) {
+    case "giveaway":
+      return str(d.prize) || fallback;
     case "link":
       return str(d.label) || fallback;
     case "embed":
@@ -226,6 +235,202 @@ function IconPicker({
   );
 }
 
+/** Giveaway block editor — fields + the live raffle console (entries
+ *  counter, entry-page link, the draw moment, leads export). */
+function GiveawayFields({
+  block,
+  onChange,
+}: {
+  block: Block;
+  onChange: (data: Record<string, unknown>) => void;
+}): React.ReactElement {
+  const d = block.data;
+  const rid = str(d.raffleId);
+  const [info, setInfo] = useState<{ entryCount: number; state: string; winnerTicketIds?: string[] } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const refresh = useCallback(async () => {
+    if (!rid) return;
+    try {
+      const j = await getJson<{ raffle: { entryCount: number; state: string; winnerTicketIds?: string[] } }>(
+        `/api/raffles/${encodeURIComponent(rid)}`,
+      );
+      setInfo(j.raffle);
+    } catch {
+      /* console is best-effort */
+    }
+  }, [rid]);
+
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
+
+  const draw = useCallback(async () => {
+    if (!rid) return;
+    setBusy(true);
+    setErr(null);
+    try {
+      await postJson(`/api/raffles/${encodeURIComponent(rid)}/draw`);
+      await refresh();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "draw failed");
+    } finally {
+      setBusy(false);
+    }
+  }, [rid, refresh]);
+
+  const downloadLeads = useCallback(async () => {
+    if (!rid) return;
+    setErr(null);
+    try {
+      const res = await fetch(`/api/raffles/${encodeURIComponent(rid)}/leads?format=csv`, {
+        headers: { ...adminHeaders() },
+      });
+      if (!res.ok) throw new Error("export failed");
+      const blob = await res.blob();
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `${rid}-leads.csv`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "export failed");
+    }
+  }, [rid]);
+
+  const locked = Boolean(rid); // prize/close are part of the commitment story — locked after mint
+  return (
+    <div className="grid gap-3">
+      <div className="grid sm:grid-cols-2 gap-3">
+        <div>
+          <label className="label">Prize</label>
+          <input
+            className="field"
+            value={str(d.prize)}
+            disabled={locked}
+            placeholder="One free haircut"
+            onChange={(e) => onChange({ ...d, prize: e.target.value })}
+          />
+        </div>
+        <div>
+          <label className="label">Closes</label>
+          <input
+            className="field"
+            type="datetime-local"
+            value={str(d.closesAt).slice(0, 16)}
+            disabled={locked}
+            onChange={(e) => onChange({ ...d, closesAt: e.target.value })}
+          />
+        </div>
+      </div>
+      <div className="grid sm:grid-cols-[1fr_110px_130px] gap-3">
+        <div>
+          <label className="label">Description (optional)</label>
+          <input
+            className="field"
+            value={str(d.description)}
+            placeholder="What's up for grabs, in one line"
+            onChange={(e) => onChange({ ...d, description: e.target.value })}
+          />
+        </div>
+        <div>
+          <label className="label">Winners</label>
+          <input
+            className="field"
+            type="number"
+            min={1}
+            max={20}
+            value={Number(d.winners ?? 1)}
+            disabled={locked}
+            onChange={(e) => onChange({ ...d, winners: Math.max(1, Math.min(20, Number(e.target.value) || 1)) })}
+          />
+        </div>
+        <div>
+          <label className="label">Max entries</label>
+          <input
+            className="field"
+            type="number"
+            min={2}
+            placeholder="no cap"
+            value={d.maxEntries ? Number(d.maxEntries) : ""}
+            disabled={locked}
+            onChange={(e) => {
+              const n = Number(e.target.value);
+              onChange({ ...d, maxEntries: n >= 2 ? Math.min(100000, n) : undefined });
+            }}
+            title="Scarcity cap — entries stop early when the spots fill"
+          />
+        </div>
+      </div>
+      <div>
+        <label className="label">Rules (optional — shown on the entry page)</label>
+        <textarea
+          className="field min-h-[64px]"
+          value={str(d.rules)}
+          disabled={locked}
+          placeholder={"One entry per person. Winner announced after the draw.\nPrize ships within 2 weeks. 18+."}
+          onChange={(e) => onChange({ ...d, rules: e.target.value || undefined })}
+        />
+      </div>
+
+      {!rid ? (
+        <p className="text-[11px] text-fg-subtle">
+          Saving mints this giveaway with a published fairness commitment — prize, close
+          time, and winner count lock at that moment so the promise can't move.
+        </p>
+      ) : (
+        <div className="rounded-xl bg-ink-850 border border-ink-800 px-4 py-3 grid gap-2">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <p className="text-xs font-semibold">
+              {info ? (
+                <>
+                  <span className="text-accent-soft">{info.entryCount}</span> verified{" "}
+                  {info.entryCount === 1 ? "entry" : "entries"} · {info.state}
+                </>
+              ) : (
+                "loading entries…"
+              )}
+            </p>
+            <div className="flex items-center gap-2">
+              <a
+                href={`/r/${encodeURIComponent(rid)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[11px] font-semibold text-accent-soft hover:underline underline-offset-4"
+              >
+                entry page ↗
+              </a>
+              <a
+                href={`/r/${encodeURIComponent(rid)}/verify`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[11px] font-semibold text-accent-soft hover:underline underline-offset-4"
+              >
+                verify ↗
+              </a>
+              <button onClick={() => void downloadLeads()} className="btn btn-secondary !py-1 !px-2.5 !text-[11px]">
+                Leads CSV
+              </button>
+              {info?.state === "closed" && (
+                <button onClick={() => void draw()} disabled={busy} className="btn btn-primary !py-1 !px-3 !text-[11px]">
+                  {busy ? "Drawing…" : "Draw winners"}
+                </button>
+              )}
+            </div>
+          </div>
+          {info?.state === "drawn" && (info.winnerTicketIds?.length ?? 0) > 0 && (
+            <p className="text-[11px] font-mono text-signal-green">
+              won by {info.winnerTicketIds!.join(", ")}
+            </p>
+          )}
+          {err && <p className="text-[11px] text-signal-red">{err}</p>}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function BlockFields({
   block,
   onChange,
@@ -235,6 +440,8 @@ function BlockFields({
 }): React.ReactElement {
   const d = block.data;
   switch (block.type) {
+    case "giveaway":
+      return <GiveawayFields block={block} onChange={onChange} />;
     case "link":
       return (
         <div className="grid sm:grid-cols-[1fr_2fr_72px] gap-3">

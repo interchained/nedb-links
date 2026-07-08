@@ -159,6 +159,22 @@ function renderBlock(b: Block, m: IdentityManifest, origin: string): string {
       // Social profiles are identity, not content — they render as the
       // brand-icon row in the page header, not here.
       return "";
+    case "giveaway": {
+      // The giveaway card — a stateful invitation. The card renders from
+      // the manifest (prize/close time); the live entry flow and draw
+      // state live at /r/:id, server-rendered per request.
+      const rid = typeof d.raffleId === "string" ? d.raffleId : "";
+      if (!rid || !d.prize) return "";
+      const closed = d.closesAt ? Date.now() >= new Date(String(d.closesAt)).getTime() : false;
+      const sub = closed
+        ? "entries closed — drawn provably fair"
+        : `free to enter · drawn provably fair${d.closesAt ? ` · closes ${esc(new Date(String(d.closesAt)).toUTCString().replace(":00 GMT", " GMT"))}` : ""}`;
+      return `<a class="lk gvw" href="${esc(origin)}/r/${esc(rid)}" rel="noopener">
+  <span class="ic">🎁</span>
+  <span><b>${esc(d.prize)}</b><i class="gvs">${sub}</i></span>
+  <span class="ar">${closed ? "›" : "→"}</span>
+</a>`;
+    }
     case "surfaces": {
       // The Save & share module: this identity's sibling surfaces as
       // tappable chips. Human trio (vCard/QR/card) defaults ON when
@@ -320,6 +336,28 @@ ${fonts.link}
         transition: transform 0.15s ease, opacity 0.15s ease; }
   .lk:hover .ar { transform: translateX(3px); opacity: 1; }
 
+  /* Giveaway card — link anatomy, HOLOGRAPHIC dress: an animated conic
+     ring etched around the card, its blurred twin bleeding past the
+     edge. Pure CSS; reduced-motion freezes the ring in place. */
+  @property --gvang { syntax: "<angle>"; initial-value: 0deg; inherits: false; }
+  @keyframes gvspin { to { --gvang: 360deg; } }
+  .gvw { position: relative; border-color: transparent;
+         box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.1), inset 0 -1px 0 rgb(0 0 0 / 0.35),
+                     0 1px 2px rgba(0,0,0,0.08), 0 8px 24px -14px ${t.accent}40; }
+  .gvw::before, .gvw::after { content: ""; position: absolute; inset: -2px; border-radius: 18px;
+    z-index: -1; pointer-events: none;
+    background: conic-gradient(from var(--gvang), #6366f1, #22d3ee, #34d399, #fbbf24, #ec4899, #6366f1);
+    animation: gvspin 7s linear infinite; }
+  .gvw::after { filter: blur(14px); opacity: .4; inset: -4px; }
+  .gvw:hover::before, .gvw:hover::after { animation-duration: 2.4s; }
+  .gvw:hover::after { opacity: .65; }
+  .gvw:active { transform: scale(.985); }
+  .gvw .ic { animation: gvpulse 2.6s ease-in-out infinite; }
+  @keyframes gvpulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.12); } }
+  .gvw b { display: block; }
+  .gvs { display: block; font-style: normal; font-weight: 500; font-size: 12px;
+         color: ${t.sub}; margin-top: 2px; }
+
   /* Save & share chips — sibling surfaces as quiet pills. */
   .sf { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin: 12px 0; }
   .sfb { display: inline-flex; align-items: center; gap: 7px;
@@ -359,6 +397,7 @@ ${fonts.link}
   @media (prefers-reduced-motion: reduce) {
     .id, section > *, footer { animation: none; }
     .lk, .sb, .ar { transition: none; }
+    .gvw::before, .gvw::after, .gvw .ic { animation: none; }
   }
 </style>
 </head>

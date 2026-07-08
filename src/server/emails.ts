@@ -409,3 +409,145 @@ export function magicLoginEmail(opts: {
     ].join("\n"),
   };
 }
+
+// ── 7 · Giveaway: the entry code ─────────────────────────────────────────────
+
+export function giveawayCodeEmail(opts: {
+  to: string;
+  code: string;
+  prize: string;
+  handle: string;
+}): OutgoingMail {
+  const digits = opts.code
+    .split("")
+    .map(
+      (d) =>
+        `<td style="width:44px;height:54px;border:1px solid ${BORDER};border-radius:10px;font-family:${FONT};font-size:26px;font-weight:700;color:${INK};text-align:center;">${esc(d)}</td>`,
+    )
+    .join(`<td style="width:8px;"></td>`);
+  const html = shell({
+    preheader: `Your entry code for ${opts.prize}. Expires in 30 minutes.`,
+    kicker: "confirm your entry",
+    content: [
+      heading("One code between you and a ticket"),
+      paragraph(
+        `You're entering <b>${esc(opts.prize)}</b> — a giveaway by @${esc(opts.handle)}. Type this code on the entry page to lock your ticket:`,
+        { center: true, muted: true },
+      ),
+      `<table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" style="margin:14px auto 2px;"><tr>${digits}</tr></table>`,
+      divider(),
+      paragraph(
+        "The code works once and expires in 30 minutes. Didn't enter anything? Ignore this — no ticket exists without the code.",
+        { center: true, muted: true },
+      ),
+    ].join("\n"),
+    reason: `You're receiving this because this address was entered in a giveaway on ${esc(BRAND)}.`,
+  });
+  return {
+    to: opts.to,
+    subject: `Your entry code — ${opts.prize}`,
+    html,
+    text: [
+      `${BRAND_UP} — CONFIRM YOUR GIVEAWAY ENTRY`,
+      "",
+      `Giveaway: ${opts.prize} (by @${opts.handle})`,
+      `Your code: ${opts.code}`,
+      "",
+      "Enter it on the giveaway page to lock your ticket.",
+      "Works once, expires in 30 minutes. Didn't enter? Ignore this email.",
+    ].join("\n"),
+  };
+}
+
+// ── 8 · Giveaway: ticket confirmed ───────────────────────────────────────────
+
+export function giveawayTicketEmail(opts: {
+  to: string;
+  name: string;
+  ticketId: string;
+  prize: string;
+  handle: string;
+  closesAt: string;
+  verifyUrl: string;
+}): OutgoingMail {
+  const closes = new Date(opts.closesAt).toUTCString();
+  const html = shell({
+    preheader: `Ticket ${opts.ticketId} — you're in the draw for ${opts.prize}.`,
+    kicker: "you're in",
+    content: [
+      heading("Your ticket is locked"),
+      paragraph(
+        `${esc(opts.name)}, you're officially in the draw for <b>${esc(opts.prize)}</b> by @${esc(opts.handle)}.`,
+        { center: true, muted: true },
+      ),
+      `<p style="margin:16px 0 4px;text-align:center;"><span style="display:inline-block;font-family:'JetBrains Mono',ui-monospace,monospace;font-size:18px;font-weight:700;color:${INK};border:1px solid ${BORDER};border-radius:12px;padding:12px 22px;">${esc(opts.ticketId)}</span></p>`,
+      paragraph(`Entries close ${esc(closes)}.`, { center: true, muted: true }),
+      divider(),
+      paragraph(
+        `This draw is provably fair: the outcome commitment was published before entries opened, and the winner is computed against a public randomness beacon. <a href="${esc(opts.verifyUrl)}" style="color:${BLUE};">Verify the math yourself</a> — your ticket id is your anonymous, public stake.`,
+        { center: true, muted: true },
+      ),
+    ].join("\n"),
+    reason: `You're receiving this because you confirmed a giveaway entry on ${esc(BRAND)}.`,
+  });
+  return {
+    to: opts.to,
+    subject: `You're in — ticket ${opts.ticketId} for ${opts.prize}`,
+    html,
+    text: [
+      `${BRAND_UP} — TICKET CONFIRMED`,
+      "",
+      `${opts.name}, you're in the draw for: ${opts.prize} (by @${opts.handle})`,
+      `Your ticket: ${opts.ticketId}`,
+      `Entries close: ${closes}`,
+      "",
+      `Provably fair — verify the draw: ${opts.verifyUrl}`,
+    ].join("\n"),
+  };
+}
+
+// ── 9 · Giveaway: the winner ─────────────────────────────────────────────────
+
+export function giveawayWinnerEmail(opts: {
+  to: string;
+  name: string;
+  ticketId: string;
+  prize: string;
+  handle: string;
+  verifyUrl: string;
+}): OutgoingMail {
+  const html = shell({
+    preheader: `Ticket ${opts.ticketId} won ${opts.prize}.`,
+    kicker: "you won",
+    content: [
+      heading("🎉 That's your ticket"),
+      paragraph(
+        `${esc(opts.name)} — ticket <b style="font-family:'JetBrains Mono',ui-monospace,monospace;">${esc(opts.ticketId)}</b> just won <b>${esc(opts.prize)}</b>, the giveaway by @${esc(opts.handle)}.`,
+        { center: true, muted: true },
+      ),
+      paragraph(
+        `@${esc(opts.handle)} has your contact details from your entry and will reach out about claiming the prize.`,
+        { center: true, muted: true },
+      ),
+      divider(),
+      paragraph(
+        `Don't take our word for it: the draw is publicly verifiable — commitment, beacon, and the exact arithmetic. <a href="${esc(opts.verifyUrl)}" style="color:${BLUE};">Check the math</a>.`,
+        { center: true, muted: true },
+      ),
+    ].join("\n"),
+    reason: `You're receiving this because your giveaway ticket won on ${esc(BRAND)}.`,
+  });
+  return {
+    to: opts.to,
+    subject: `🎉 You won ${opts.prize}`,
+    html,
+    text: [
+      `${BRAND_UP} — YOU WON`,
+      "",
+      `${opts.name}, ticket ${opts.ticketId} won: ${opts.prize} (by @${opts.handle})`,
+      `The page owner will contact you about claiming it.`,
+      "",
+      `Verify the draw yourself: ${opts.verifyUrl}`,
+    ].join("\n"),
+  };
+}
