@@ -50,6 +50,8 @@ export interface LinksConfig {
   /** Profile limits active? On when Stripe is configured or the limit is
    *  set explicitly. Self-host default: unlimited free. */
   limitEnabled: boolean;
+  /** ITC node JSON-RPC for the giveaway beacon (may embed basic auth — never log). */
+  itcRpcUrl: string;
   /** Free profiles per account (default 1 when limits are on). */
   freeProfileLimit: number;
   /** Stripe (pay-what-you-want, one time). Absent = fiat door closed. */
@@ -98,6 +100,7 @@ export function loadConfig(): LinksConfig {
       Boolean(process.env.STRIPE_SECRET_KEY) ||
       process.env.LINKS_FREE_PROFILE_LIMIT !== undefined,
     freeProfileLimit: Math.max(1, Number(process.env.LINKS_FREE_PROFILE_LIMIT || 1)),
+    itcRpcUrl: process.env.ITC_RPC_URL || "",
     stripeSecretKey: process.env.STRIPE_SECRET_KEY || undefined,
     stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET || undefined,
     pwywMinCents: Math.max(50, Number(process.env.LINKS_PWYW_MIN_CENTS || 100)),

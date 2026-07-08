@@ -22,6 +22,7 @@ import { grants } from "./grants";
 import { handles, identities } from "./identities";
 import { preview } from "./preview";
 import { discover } from "./discover";
+import { raffles } from "./raffles";
 import { render } from "./render";
 import { uploads } from "./uploads";
 
@@ -120,6 +121,7 @@ export function createApp(): Express {
   // ── Public identity surfaces (/:handle, /go/*) ────────────────────────────
   // Discover mounts BEFORE /:handle so the directory wins the route.
   app.use(discover);
+  app.use(raffles); // /r/:id pages + /api/raffles — before /:handle
   app.use(render);
 
   // ── SPA fallback ──────────────────────────────────────────────────────────

@@ -25,6 +25,8 @@ import "../lib/blocks/builtin";
 import "../lib/templates/builtin";
 import { maybeSendPublishedEmail } from "./accounts-email";
 import { authOf, requireUser } from "./auth";
+import { unlimitedStatus } from "./billing";
+import { createRaffleForBlock, getRaffle } from "./raffles";
 import { canClaimAnother } from "./billing";
 import { grantsOf, hasRole, writeOwnerGrant } from "./grants";
 import { wrap } from "./util";
@@ -303,6 +305,46 @@ identities.put("/:id", requireUser, wrap(async (req, res) => {
   if (blockError) {
     res.status(400).json({ error: blockError });
     return;
+  }
+
+  // ── Premium gates (enforced only when limits are on — dev/self-host
+  //    instances run unlimited, same contract as claim limits) ──────────
+  const newGiveaways = blocks.filter(
+    (b) => b.type === "giveaway" && !(b.data as { raffleId?: string }).raffleId,
+  );
+  const flippingDiscoverOn = patch.data.discoverable === true && current.discoverable !== true;
+  if (newGiveaways.length > 0 || flippingDiscoverOn) {
+    const status = await unlimitedStatus(auth);
+    if (!status.unlimited) {
+      res.status(403).json({
+        error: newGiveaways.length
+          ? "giveaways are a premium feature — upgrade to host one"
+          : "Discover listing is a premium feature — upgrade to be found",
+        code: "premium_required",
+      });
+      return;
+    }
+  }
+
+  // ── Giveaway blocks: mint the raffle (and its commitment) on first
+  //    save; verify ownership on every save — a raffleId from someone
+  //    else's giveaway can't be pasted into your page. ────────────────
+  for (const b of blocks) {
+    if (b.type !== "giveaway") continue;
+    const d = b.data as { raffleId?: string; prize: string; description?: string; closesAt: string; winners?: number };
+    if (!d.raffleId) {
+      const raffle = await createRaffleForBlock(
+        { identityId: current.identityId, handle: current.handle },
+        d,
+      );
+      d.raffleId = raffle.raffleId;
+    } else {
+      const raffle = await getRaffle(d.raffleId);
+      if (!raffle || raffle.identityId !== current.identityId) {
+        res.status(400).json({ error: `block ${b.id}: that giveaway belongs to another page` });
+        return;
+      }
+    }
   }
 
   const next: IdentityManifest = {
