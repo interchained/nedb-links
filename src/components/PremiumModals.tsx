@@ -1,6 +1,6 @@
 import React, { useEffect } from "react";
 import { createPortal } from "react-dom";
-import { Check, Crown, Gift, Globe, Images, Infinity as InfinityIcon, QrCode, Search, Type, X } from "lucide-react";
+import { Check, Crown, Gift, Globe, Images, Infinity as InfinityIcon, QrCode, Search, Type, Users, X } from "lucide-react";
 
 import { billingViaLabel, type BillingStatus } from "../lib/useBillingStatus";
 import { useAppConfig } from "../lib/useAppConfig";
@@ -27,6 +27,7 @@ const PERKS = [
   { icon: Search, label: "Listed in Discover" },
   { icon: Type, label: "The font vault — 38 typefaces" },
   { icon: InfinityIcon, label: "More profiles, unlimited blocks" },
+  { icon: Users, label: "Team access — share your page" },
   { icon: Check, label: "Every premium unlock to come" },
 ];
 

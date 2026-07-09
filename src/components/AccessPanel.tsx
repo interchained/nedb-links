@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 
 import { adminHeaders, ApiError, getJson, postJson } from "../lib/api";
+import { requestUpgrade } from "../lib/upgrade";
 import { useAppConfig } from "../lib/useAppConfig";
 import { isItcAddress } from "../lib/wallet";
 
@@ -29,11 +30,15 @@ function shortAddr(addr: string): string {
 export function AccessPanel({
   identityId,
   canManage = true,
+  sharingWalled = false,
 }: {
   identityId: string;
   /** Only owners grant and revoke — the server enforces it; the UI
    *  shows exactly those powers (viewers/editors see the list only). */
   canManage?: boolean;
+  /** Sharing is a premium feature of the PAGE — when walled, the form
+   *  becomes the pitch (revoking stays free: walls never trap). */
+  sharingWalled?: boolean;
 }): React.ReactElement {
   const cfg = useAppConfig();
   const emailMode = cfg?.authMode === "email";
@@ -159,7 +164,15 @@ export function AccessPanel({
       {/* minmax(0,1fr): a bare 1fr is minmax(auto,1fr) — the input's
           intrinsic width sets a floor that stretches the page on phones.
           Found with a layout bisector; keep the 0. */}
-      {canManage && (
+      {canManage && sharingWalled && (
+        <button
+          onClick={() => requestUpgrade("access")}
+          className="mt-3 w-full rounded-xl border border-dashed border-accent/40 text-accent-soft text-sm font-semibold py-3 hover:bg-accent/10 transition"
+        >
+          ✨ Invite your team — sharing is a premium unlock
+        </button>
+      )}
+      {canManage && !sharingWalled && (
       <div className="mt-3 grid grid-cols-[minmax(0,1fr)_auto_auto] gap-2">
         <input
           value={address}
@@ -185,7 +198,7 @@ export function AccessPanel({
         </button>
       </div>
       )}
-      {canManage && address.trim() && !addressValid && (
+      {canManage && !sharingWalled && address.trim() && !addressValid && (
         <p className="mt-1.5 text-[11px] text-signal-amber font-mono">
           {emailMode ? "not a valid email yet" : "not a valid itc1 address yet"}
         </p>

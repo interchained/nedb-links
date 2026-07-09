@@ -59,7 +59,7 @@ export default function TermsPage(): React.ReactElement {
           <p>
             <b className="text-fg">Premium, pay once:</b> whatever it's worth to you (there's a
             small floor), one time, never monthly. It adds more profiles, unlimited blocks, photo
-            galleries, the QR studio, custom search &amp; sharing, giveaways, a listing in
+            galleries, the QR studio, custom search &amp; sharing, team access, giveaways, a listing in
             Discover, and the font vault. Anyone who bought Premium before the current profile
             allowance existed keeps the deal they bought — we don't rewrite paid promises.
           </p>

@@ -14,6 +14,7 @@ export type UpgradeReason =
   | "gallery"
   | "qr"
   | "seo"
+  | "access"
   | "limit"
   | "generic";
 

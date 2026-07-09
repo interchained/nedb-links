@@ -214,6 +214,24 @@ test("checkout without Stripe answers 503, not a crash", async () => {
   assert.equal(r.status, 503);
 });
 
+test("sharing access is premium — free owners get the doorway, not the form", async () => {
+  const list = (await (await fetch(`${base}/api/identities`, { headers: authed() })).json()) as {
+    identities: Array<{ identityId: string; handle: string }>;
+  };
+  const idn = list.identities.find((i) => i.handle === "gatefree");
+  assert.ok(idn);
+  const other = await deriveAccount(generatePhrase());
+  const r = await fetch(`${base}/api/identities/${idn.identityId}/grants`, {
+    method: "POST",
+    headers: authed(),
+    body: JSON.stringify({ address: other.address, role: "viewer" }),
+  });
+  assert.equal(r.status, 403, "free pages cannot share access");
+  const j = (await r.json()) as { code?: string; error?: string };
+  assert.equal(j.code, "premium_required");
+  assert.match(j.error ?? "", /sharing/i, "the message names the sharing wall");
+});
+
 test("a supporter entitlement unlocks unlimited", async () => {
   // Written exactly the way the webhook writes it.
   await db.put(
@@ -382,4 +400,89 @@ test("premium unlocks custom SEO — the public head carries the owner's words",
   assert.match(page, /<title>Gatefree — the proof page<\/title>/, "custom title on the public head");
   assert.match(page, /og:image" content="https:\/\/cdn\.example\.com\/share\.jpg"/, "share card lands");
   assert.match(page, /summary_large_image/, "large card with an image");
+});
+
+test("entitlements follow the PAGE: received ownership is free, free editors wield premium pages", async () => {
+  const list = (await (await fetch(`${base}/api/identities`, { headers: authed() })).json()) as {
+    identities: Array<{ identityId: string; handle: string }>;
+  };
+  const idn = list.identities.find((i) => i.handle === "gatefree");
+  assert.ok(idn, "premium page present");
+
+  // A second, FREE account.
+  const login2 = async () => {
+    const phrase = generatePhrase();
+    const acct = await deriveAccount(phrase);
+    const chal = (await (
+      await fetch(`${base}/api/auth/challenge`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ address: acct.address }),
+      })
+    ).json()) as { challengeId: string; message: string };
+    const signature = await signMessage(phrase, chal.message);
+    const r = await fetch(`${base}/api/auth/verify`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ challengeId: chal.challengeId, address: acct.address, signature }),
+    });
+    return { token: ((await r.json()) as { token: string }).token, address: acct.address };
+  };
+  const friend = await login2();
+  const authedAs = (t: string) => ({ authorization: `Bearer ${t}`, "content-type": "application/json" });
+
+  // The premium owner hands the friend OWNERSHIP of gatefree.
+  const own = await fetch(`${base}/api/identities/${idn.identityId}/grants`, {
+    method: "POST",
+    headers: authed(),
+    body: JSON.stringify({ address: friend.address, role: "owner" }),
+  });
+  assert.equal(own.status, 201, "premium pages can share (even ownership)");
+
+  // Received ownership spends NOTHING (Mark's consent catch, 7/9).
+  const status = (await (
+    await fetch(`${base}/api/billing/status`, { headers: authedAs(friend.token) })
+  ).json()) as { owned: number };
+  assert.equal(status.owned, 0, "a granted ownership never counts against your limit");
+
+  // The friend still claims their own first page freely.
+  const claim = await fetch(`${base}/api/identities`, {
+    method: "POST",
+    headers: authedAs(friend.token),
+    body: JSON.stringify({ handle: "friendsown", displayName: "Friend" }),
+  });
+  assert.equal(claim.status, 201, "the free allowance was untouched");
+  const friendPageId = ((await claim.json()) as { manifest: { identityId: string } }).manifest.identityId;
+
+  // FREE actor on the PREMIUM page: the page's powers apply — a gallery saves.
+  const gal = await fetch(`${base}/api/identities/${idn.identityId}`, {
+    method: "PUT",
+    headers: authedAs(friend.token),
+    body: JSON.stringify({
+      blocks: [
+        { id: "blk_pageprem", type: "gallery", order: 0, data: { images: [{ url: "https://cdn.example.com/team.jpg" }] } },
+      ],
+    }),
+  });
+  assert.equal(gal.status, 200, "free editor/owner on a premium page uses the PAGE's premium");
+
+  // The SAME free account on their OWN free page: walls apply.
+  const galOwn = await fetch(`${base}/api/identities/${friendPageId}`, {
+    method: "PUT",
+    headers: authedAs(friend.token),
+    body: JSON.stringify({
+      blocks: [
+        { id: "blk_freeown", type: "gallery", order: 0, data: { images: [{ url: "https://cdn.example.com/nope.jpg" }] } },
+      ],
+    }),
+  });
+  assert.equal(galOwn.status, 403, "the same account's free page keeps its walls");
+
+  // And the free friend cannot share their own free page.
+  const share = await fetch(`${base}/api/identities/${friendPageId}/grants`, {
+    method: "POST",
+    headers: authedAs(friend.token),
+    body: JSON.stringify({ address: address, role: "viewer" }),
+  });
+  assert.equal(share.status, 403, "sharing stays premium for the friend's own page");
 });

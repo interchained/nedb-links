@@ -24,6 +24,7 @@ import {
 import { isItcAddress } from "../lib/wallet";
 import { emailPrincipal, normalizeEmail } from "./accounts-email";
 import { authOf, requireUser, type AuthContext } from "./auth";
+import { pageUnlimited } from "./billing";
 import { config } from "./config";
 import { causalParent, db } from "./db";
 import { grantInviteEmail } from "./emails";
@@ -108,6 +109,16 @@ grants.post("/", requireUser, wrap(async (req, res) => {
   const auth = authOf(res);
   if (!auth || !(await hasRole(identityId, auth, "owner"))) {
     res.status(403).json({ error: "owner role required" });
+    return;
+  }
+  // Sharing access is a premium feature OF THE PAGE (Mark, 7/9).
+  // Being shared-to costs nothing; revoking is always free — walls
+  // never trap people in a shared state.
+  if (config.limitEnabled && !auth.isOperator && !(await pageUnlimited(identityId))) {
+    res.status(403).json({
+      error: "sharing access is a premium unlock — go Premium to invite your team",
+      code: "premium_required",
+    });
     return;
   }
   // The share handle matches the product: wallet mode grants by itc1…

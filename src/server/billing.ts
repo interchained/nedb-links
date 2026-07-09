@@ -28,7 +28,7 @@ import { authOf, requireUser, type AuthContext } from "./auth";
 import { config } from "./config";
 import { db } from "./db";
 import { confirmedItcBalance } from "./electrum";
-import { grantsOf } from "./grants";
+import { grantsFor, grantsOf } from "./grants";
 import { wrap } from "./util";
 
 export const billing = Router();
@@ -52,8 +52,28 @@ export async function getEntitlement(
 }
 
 export async function ownedProfileCount(address: string): Promise<number> {
+  // Only pages you CLAIMED yourself spend your allowance (claims always
+  // self-grant, grantedBy === you). Ownership someone handed you can't —
+  // otherwise a stranger could spend your limit without consent (Mark's
+  // catch, 7/9: two hostile owner-grants would brick a free account).
   const grants = await grantsOf(address);
-  return grants.filter((g) => g.role === "owner").length;
+  return grants.filter((g) => g.role === "owner" && g.grantedBy === address).length;
+}
+
+/**
+ * Premium for PAGE features: the page's OWNERS carry the entitlement.
+ * A free editor on a premium page wields the page's powers; a premium
+ * editor can't smuggle premium features onto a free page. (Mark's
+ * model, 7/9: entitlements attach to the page, not the actor.)
+ */
+export async function pageUnlimited(identityId: string): Promise<boolean> {
+  if (!config.limitEnabled) return true;
+  const owners = (await grantsFor(identityId)).filter((g) => g.role === "owner");
+  for (const g of owners) {
+    const ctx = { address: g.address, isOperator: false } as AuthContext;
+    if ((await unlimitedStatus(ctx)).unlimited) return true;
+  }
+  return false;
 }
 
 export interface UnlimitedStatus {
@@ -216,8 +236,8 @@ billing.post("/checkout", requireUser, wrap(async (req, res) => {
             name: `${config.brandName} Premium — pay once`,
             description:
               config.premiumProfileLimit > 0
-                ? `Pay what you want, once. Up to ${config.premiumProfileLimit} profiles, unlimited blocks, galleries, the QR studio, custom SEO, giveaways, Discover & the font vault. No subscription, ever.`
-                : "Pay what you want, once. Unlimited blocks, galleries, the QR studio, custom SEO, giveaways, Discover & the font vault. No subscription, ever.",
+                ? `Pay what you want, once. Up to ${config.premiumProfileLimit} profiles, unlimited blocks, galleries, the QR studio, custom SEO, team access, giveaways, Discover & the font vault. No subscription, ever.`
+                : "Pay what you want, once. Unlimited blocks, galleries, the QR studio, custom SEO, team access, giveaways, Discover & the font vault. No subscription, ever.",
           },
         },
       },

@@ -26,7 +26,7 @@ import "../lib/blocks/builtin";
 import "../lib/templates/builtin";
 import { maybeSendPublishedEmail } from "./accounts-email";
 import { authOf, requireUser, type AuthContext } from "./auth";
-import { unlimitedStatus } from "./billing";
+import { pageUnlimited, unlimitedStatus } from "./billing";
 import { createRaffleForBlock, getRaffle } from "./raffles";
 import { canClaimAnother } from "./billing";
 import { getGrant, grantsOf, hasRole, writeOwnerGrant } from "./grants";
@@ -323,6 +323,9 @@ identities.get("/:id", requireUser, wrap(async (req, res) => {
   res.json({
     manifest,
     yourRole: auth.isOperator ? "owner" : (grant?.role ?? "viewer"),
+    // Feature walls in the editor follow the PAGE's entitlement, not
+    // the caller's — a free editor on a premium page edits unwalled.
+    pagePremium: await pageUnlimited(identityId),
   });
 }));
 
@@ -383,8 +386,11 @@ identities.put("/:id", requireUser, wrap(async (req, res) => {
       }),
   );
   if (newGiveaways.length > 0 || flippingDiscoverOn || wantsPremiumFont || hasGallery || wantsSeo || overBlockCap) {
-    const status = await unlimitedStatus(auth);
-    if (!status.unlimited) {
+    // Entitlements attach to the PAGE (its owners), not the actor: a
+    // free editor on a premium page uses the page's powers; a premium
+    // editor can't smuggle features onto a free page (Mark, 7/9).
+    const unlimited = auth.isOperator || (await pageUnlimited(identityId));
+    if (!unlimited) {
       res.status(403).json({
         error: newGiveaways.length
           ? "giveaways are a premium feature — upgrade to host one"

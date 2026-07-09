@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { Gift, Globe, Images, Infinity as InfinityIcon, QrCode, Search, Sparkles, Type, X } from "lucide-react";
+import { Gift, Globe, Images, Infinity as InfinityIcon, QrCode, Search, Sparkles, Type, Users, X } from "lucide-react";
 
 import { useAppConfig } from "../lib/useAppConfig";
 import { onUpgradeRequest, type UpgradeReason } from "../lib/upgrade";
@@ -22,6 +22,7 @@ const HEADLINES: Record<UpgradeReason, [string, string]> = {
   gallery: ["Show your work", "Photo galleries are a premium unlock — your page becomes a portfolio."],
   qr: ["Own the counter", "Brand colors, per-link codes, and print flyers — the QR studio is premium."],
   seo: ["Own your snippet", "Custom search titles, descriptions, and share cards are premium."],
+  access: ["Invite your team", "Shared access — owners, editors, viewers, with provenance — is premium."],
   limit: ["You've used your free profile", "Premium adds more profiles — pay once, never monthly."],
   generic: ["Go Premium", "Everything the free tier holds back, unlocked at once."],
 };
@@ -34,6 +35,7 @@ const PERKS = [
   { icon: Search, label: "Listed in Discover", sub: "be found, on purpose" },
   { icon: Type, label: "The font vault", sub: "38 curated typefaces" },
   { icon: InfinityIcon, label: "More profiles, unlimited blocks", sub: "build without block ceilings" },
+  { icon: Users, label: "Share access with your team", sub: "owners, editors, viewers" },
   { icon: Sparkles, label: "Everything that lands next", sub: "premium once means premium always" },
 ];
 

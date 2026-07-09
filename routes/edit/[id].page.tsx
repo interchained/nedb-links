@@ -956,13 +956,16 @@ export default function EditPage(): React.ReactElement {
   const [previewHtml, setPreviewHtml] = useState<string>("");
   const [addOpen, setAddOpen] = useState(false);
   // The block cap: free pages hold freeBlockLimit blocks (all types).
-  // Billing status makes the Add button honest — at the cap it opens
-  // the upgrade pitch instead of silently letting a save fail later.
+  // Walls follow the PAGE's entitlement (pagePremium from the manifest
+  // GET), not the caller's billing — a free editor on a premium page
+  // edits unwalled; a premium editor gets walls on a free page.
   const { status: billing } = useBillingStatus();
+  const [pagePremium, setPagePremium] = useState(true);
   const blockCap =
-    billing && billing.limitEnabled && !billing.unlimited
+    billing?.limitEnabled && !pagePremium
       ? ((billing as { freeBlockLimit?: number }).freeBlockLimit ?? 3)
       : null;
+  const pageWalled = Boolean(billing?.limitEnabled) && !pagePremium;
   /** Hover try-on for backgrounds — previewed, never saved. */
   const [bgHover, setBgHover] = useState<BackgroundConfig | null>(null);
   const previewSeq = useRef(0);
@@ -977,11 +980,14 @@ export default function EditPage(): React.ReactElement {
     setError(null);
     setLocked(false);
     try {
-      const j = await getJson<{ manifest: IdentityManifest; yourRole?: "viewer" | "editor" | "owner" }>(
-        `/api/identities/${encodeURIComponent(id)}`,
-      );
+      const j = await getJson<{
+        manifest: IdentityManifest;
+        yourRole?: "viewer" | "editor" | "owner";
+        pagePremium?: boolean;
+      }>(`/api/identities/${encodeURIComponent(id)}`);
       const role = j.yourRole ?? "editor";
       setYourRole(role);
+      setPagePremium(j.pagePremium ?? true);
       const draft = role === "viewer" ? null : readDraft(id);
       if (draft && draft.at > (j.manifest.updatedAt ?? "")) {
         // Newer local work exists — restore the EDITABLE fields onto the
@@ -1664,9 +1670,7 @@ export default function EditPage(): React.ReactElement {
                         // Premium blocks: badge in the picker, and the tap
                         // IS the upgrade pitch when the wall applies — a
                         // doorway, never a path to a failing save.
-                        const walled =
-                          PREMIUM_BLOCKS.has(def.type) &&
-                          Boolean(cfg?.limitEnabled && billing && !billing.unlimited);
+                        const walled = PREMIUM_BLOCKS.has(def.type) && pageWalled;
                         return (
                           <button
                             key={def.type}
@@ -1865,7 +1869,7 @@ export default function EditPage(): React.ReactElement {
               </p>
               <SeoPanel
                 manifest={manifest}
-                walled={Boolean(cfg?.limitEnabled && billing && !billing.unlimited)}
+                walled={pageWalled}
                 onChange={(seo) => patch({ seo })}
               />
             </div>
@@ -1893,7 +1897,11 @@ export default function EditPage(): React.ReactElement {
               </label>
             </div>
 
-            <AccessPanel identityId={manifest.identityId} canManage={yourRole === "owner"} />
+            <AccessPanel
+              identityId={manifest.identityId}
+              canManage={yourRole === "owner"}
+              sharingWalled={pageWalled}
+            />
             </fieldset>
           </section>
 

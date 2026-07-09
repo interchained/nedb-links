@@ -19,10 +19,10 @@
 import { Router } from "express";
 
 import { buildQrPng, buildQrSvg, shareUrl } from "../lib/renderers/qr";
-import { authOf, requireUser, type AuthContext } from "./auth";
-import { unlimitedStatus } from "./billing";
+import { authOf, requireUser } from "./auth";
+import { pageUnlimited } from "./billing";
 import { config } from "./config";
-import { grantsFor, hasRole } from "./grants";
+import { hasRole } from "./grants";
 import { getManifest } from "./identities";
 import { wrap } from "./util";
 
@@ -56,17 +56,10 @@ function originOf(req: { protocol: string; get(h: string): string | undefined })
   return config.publicOrigin || `${req.protocol}://${req.get("host") ?? "localhost"}`;
 }
 
-/** Headerless surfaces (the flyer opens in a plain browser tab) can't
- *  send a bearer token — premium is checked against the page's OWNER. */
-export async function ownerIsPremium(identityId: string): Promise<boolean> {
-  if (!config.limitEnabled) return true;
-  const owners = (await grantsFor(identityId)).filter((g) => g.role === "owner");
-  for (const g of owners) {
-    const ctx: AuthContext = { address: g.address, isOperator: false } as AuthContext;
-    if ((await unlimitedStatus(ctx)).unlimited) return true;
-  }
-  return false;
-}
+// Premium here follows the PAGE (its owners) — pageUnlimited in
+// billing.ts is the one implementation, shared with the editor gates
+// and the sharing gate. (This file's original ownerIsPremium was the
+// prototype; consolidated 7/9.)
 
 /**
  * GET /api/identities/:id/qr — the studio's one endpoint.
@@ -109,9 +102,10 @@ qrStudio.get("/", requireUser, wrap(async (req, res) => {
   }
 
   const styled = fg.toLowerCase() !== DEFAULT_FG || bg.toLowerCase() !== DEFAULT_BG;
-  if ((styled || target !== "profile") && config.limitEnabled) {
-    const status = await unlimitedStatus(auth);
-    if (!status.unlimited) {
+  if ((styled || target !== "profile") && config.limitEnabled && !auth.isOperator) {
+    // The studio acts on a PAGE — its owners' premium is what counts,
+    // so a free editor on a premium page mints branded codes too.
+    if (!(await pageUnlimited(identityId))) {
       res.status(403).json({
         error: "branded and per-link QR codes are a premium unlock — go Premium to own the counter",
         code: "premium_required",
@@ -171,7 +165,7 @@ qrFlyer.get("/qr/flyer/:id", wrap(async (req, res, next) => {
     next();
     return;
   }
-  if (!(await ownerIsPremium(manifest.identityId))) {
+  if (!(await pageUnlimited(manifest.identityId))) {
     res.status(403).setHeader("content-type", "text/html; charset=utf-8");
     res.send("<!doctype html><meta charset=\"utf-8\"><title>Premium</title><body style=\"font:16px system-ui;padding:40px;text-align:center\"><h1>Flyers are a premium unlock</h1><p>The QR studio — brand colors, per-link codes, print flyers — comes with Premium.</p>");
     return;
