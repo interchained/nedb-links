@@ -476,3 +476,31 @@ test("giveaway tagline: the owner's voice on the card, escaped; human default", 
   const closed = gv({ closesAt: "2020-01-01T00:00:00.000Z" });
   assert.ok(closed.includes("winner on the way"), "closed card is human");
 });
+
+test("giveaway face = theme CARD surface — readable over light custom canvases (Marisa's pink)", () => {
+  // The bug, pinned: DARK theme + LIGHT custom background. solidBg()
+  // tracks the background anchor, so a bare-solidBg face went pink
+  // while the card ink stayed light. The face must be the theme card
+  // surface (what the ink was designed for), composited over the
+  // anchor so the stack stays opaque against ring bleed-through.
+  const html = renderProfileHtml(
+    fixture({
+      background: { kind: "gradient", direction: "diagonal", stops: ["#fbd8e2", "#f6c1d0"] },
+      blocks: [
+        { id: "blk_gv", type: "giveaway", order: 0, data: { raffleId: "rfl_aabbccddeeff00112233", prize: "One free haircut", closesAt: "2099-01-01T00:00:00.000Z", winners: 1 } },
+      ],
+    }),
+    CTX,
+  );
+  const gvw = html.slice(html.indexOf(".gvw {"), html.indexOf(".gvw:hover"));
+  assert.ok(
+    gvw.includes("linear-gradient(#24121899, #24121899) padding-box"),
+    "face leads with the rosegold CARD color, not the canvas anchor",
+  );
+  assert.match(
+    gvw,
+    /linear-gradient\(#24121899, #24121899\) padding-box,\s*linear-gradient\(#[0-9a-fA-F]{6}/,
+    "card surface composited over a solid anchor layer — opaque stack",
+  );
+  assert.ok(gvw.includes("conic-gradient(from var(--gvang)"), "the ring survives in the border-box layer");
+});

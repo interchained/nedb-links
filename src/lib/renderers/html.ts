@@ -372,7 +372,17 @@ ${fonts.link}
      flooded the card with gradient. Caught live, twice, by computed-
      style instrumentation. This layering is immune to all of it. */
   .gvw { position: relative; border: 3px solid transparent;
+         /* The face is the theme's CARD surface — the ink (.gvw b uses
+            t.text, .gvs uses t.sub) was DESIGNED for that surface, so
+            the pairing is readable by the theme's own contract. It sits
+            composited over the solid canvas anchor so the stack stays
+            fully opaque (the ring can never bleed through). A bare
+            solidBg face was the Marisa bug: with a custom background,
+            solidBg tracks the background's anchor — her pink canvas
+            became the card face while the ink stayed card-light.
+            Canvas comes from the background; CARDS come from the theme. */
          background:
+           linear-gradient(${t.card}, ${t.card}) padding-box,
            linear-gradient(${solidBg(t)}, ${solidBg(t)}) padding-box,
            conic-gradient(from var(--gvang), ${conicStops(ctx.holoColors)}) border-box;
          animation: rise 0.5s ease both, gvspin 9s linear infinite;
