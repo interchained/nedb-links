@@ -107,11 +107,14 @@ export function Nav({
               </a>
             </>
           )}
+          {/* Projected context rides row 1 on md+ ONLY — phones give it
+              a full row of its own below (Mark's screenshot, 7/9: six
+              things fighting for 390px, chips literally overlapping). */}
           {context && (
-            <>
+            <div className="hidden md:flex items-center gap-3 min-w-0">
               <span className="h-5 w-px bg-ink-800 shrink-0" aria-hidden />
               <div className="flex items-center gap-2.5 min-w-0">{context}</div>
-            </>
+            </div>
           )}
         </div>
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
@@ -120,11 +123,12 @@ export function Nav({
               solid brand-ramp BADGE post-premium. Gating on billing.
               unlimited (not just limitEnabled+address) is the actual
               fix — the chip used to render identically before and
-              after a real Stripe checkout succeeded. */}
+              after a real Stripe checkout succeeded. Phones carry
+              premium in the hamburger instead of the bar. */}
           {cfg?.limitEnabled && address && billing?.unlimited && (
             <button
               onClick={() => setShowStatus(true)}
-              className="premium-badge rounded-full px-3 py-1 text-[11px] font-bold inline-flex items-center gap-1"
+              className="premium-badge rounded-full px-3 py-1 text-[11px] font-bold hidden md:inline-flex items-center gap-1"
               title="You're Premium — tap to see your perks"
             >
               <Crown size={11} fill="currentColor" />
@@ -134,7 +138,7 @@ export function Nav({
           {cfg?.limitEnabled && address && billing && !billing.unlimited && (
             <button
               onClick={() => requestUpgrade("generic")}
-              className="chip text-[11px] font-semibold text-accent-soft hover:border-accent/50 transition"
+              className="chip text-[11px] font-semibold text-accent-soft hover:border-accent/50 transition hidden md:inline-flex"
               title="Go Premium — galleries, the QR studio, custom SEO, giveaways, Discover, fonts, more profiles"
             >
               ✨ Premium
@@ -143,11 +147,28 @@ export function Nav({
           {/* Signed out: the Claim hero — the product's front door.
               Signed in: the nav gets QUIETER — Claim retires (it lives
               on the dashboard and in the menu) and "everything else"
-              folds into the hamburger: identity, nav links (finally
-              reachable on phones), premium, sign out. Pages that
-              project actions (the editor) still own this slot. */}
-          {actions ??
-            (address ? (
+              folds into the hamburger. Pages that project actions (the
+              editor) own this slot on md+; on phones row 1 is ALWAYS
+              just logo + hamburger, and actions ride the context row. */}
+          <div className="hidden md:flex items-center gap-1.5 sm:gap-2">
+            {actions ??
+              (address ? (
+                <NavMenu
+                  who={email ?? shortAddr(address)}
+                  premium={billing?.unlimited ? "premium" : "free"}
+                  showPremium={Boolean(cfg?.limitEnabled && billing)}
+                  onPremium={() =>
+                    billing?.unlimited ? setShowStatus(true) : requestUpgrade("generic")
+                  }
+                />
+              ) : (
+                <Link href="/" className="btn btn-primary !py-1.5 !px-3.5">
+                  Claim
+                </Link>
+              ))}
+          </div>
+          <div className="flex md:hidden items-center">
+            {address ? (
               <NavMenu
                 who={email ?? shortAddr(address)}
                 premium={billing?.unlimited ? "premium" : "free"}
@@ -160,9 +181,30 @@ export function Nav({
               <Link href="/" className="btn btn-primary !py-1.5 !px-3.5">
                 Claim
               </Link>
-            ))}
+            )}
+          </div>
         </div>
       </div>
+      {/* Phone chrome — mobile is the first-class citizen: EVERYTHING
+          the desktop bar carries stays visible and touchable, it just
+          gets real rows instead of a 390px shoving match. Context
+          (back/title/status) and actions (stats, view, Save, Publish)
+          each own a row; both ride the sticky nav so Save never
+          scrolls away. */}
+      {context && (
+        <div className="md:hidden border-t border-ink-800/60">
+          <div className="max-w-7xl mx-auto px-4 h-10 flex items-center gap-2 min-w-0">
+            {context}
+          </div>
+        </div>
+      )}
+      {actions && (
+        <div className="md:hidden border-t border-ink-800/40">
+          <div className="max-w-7xl mx-auto px-4 h-11 flex items-center justify-end gap-1.5">
+            {actions}
+          </div>
+        </div>
+      )}
       <SubNav />
       <UpgradeModal />
       <WelcomeToast />
