@@ -169,6 +169,15 @@ export interface IdentityManifest {
   /** Opt-IN listing in the public Discover directory. Publishing a page
    *  is not consent to being indexed — this flag is. Absent = false. */
   discoverable?: boolean;
+  /** Custom search & sharing (premium): overrides for the public head.
+   *  Only what engines actually read — title, description, share image.
+   *  Absent/empty fields fall back to displayName/bio automatically. */
+  seo?: {
+    title?: string;
+    description?: string;
+    /** https image URL — the og:image share card. */
+    image?: string;
+  };
   /** Ordered blocks — the body of the identity. */
   blocks: Block[];
   /** Aggregate capabilities advertised by this identity's blocks. */

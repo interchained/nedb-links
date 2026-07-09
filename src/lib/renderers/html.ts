@@ -248,8 +248,17 @@ export function renderProfileHtml(m: IdentityManifest, ctx: RenderContext): stri
   const origin = ctx.origin;
   const brand = esc(ctx.brand ?? "NEDB Links");
   const url = `${origin}/${esc(m.handle)}`;
-  const title = `${esc(m.displayName)} (@${esc(m.handle)})`;
-  const desc = esc(m.bio ?? `${m.displayName} on ${ctx.brand ?? "NEDB Links"}`);
+  // Custom search & sharing (premium) overrides; empty = automatic.
+  const seo = m.seo ?? {};
+  const title = seo.title?.trim()
+    ? esc(seo.title.trim())
+    : `${esc(m.displayName)} (@${esc(m.handle)})`;
+  const desc = seo.description?.trim()
+    ? esc(seo.description.trim())
+    : esc(m.bio ?? `${m.displayName} on ${ctx.brand ?? "NEDB Links"}`);
+  // The share card — https only; a card image upgrades the twitter card.
+  const shareImage =
+    typeof seo.image === "string" && /^https:\/\//.test(seo.image) ? esc(seo.image) : "";
   const avatar = m.avatar
     ? `<img class="av" src="${esc(safeUrl(m.avatar))}" alt="${esc(m.displayName)}" />`
     : `<div class="av avf">${esc(m.displayName.slice(0, 1).toUpperCase())}</div>`;
@@ -296,7 +305,8 @@ export function renderProfileHtml(m: IdentityManifest, ctx: RenderContext): stri
 <meta property="og:title" content="${title}" />
 <meta property="og:description" content="${desc}" />
 <meta property="og:url" content="${url}" />
-<meta name="twitter:card" content="summary" />
+${shareImage ? `<meta property="og:image" content="${shareImage}" />\n<meta name="twitter:image" content="${shareImage}" />` : ""}
+<meta name="twitter:card" content="${shareImage ? "summary_large_image" : "summary"}" />
 <link rel="canonical" href="${url}" />
 ${ctx.favicon && assetUrl(ctx.favicon) ? `<link rel="icon" href="${esc(assetUrl(ctx.favicon))}" /><link rel="apple-touch-icon" href="${esc(assetUrl(ctx.favicon))}" />` : ""}
 <link rel="alternate" type="text/markdown" href="${url}.md" title="Markdown" />

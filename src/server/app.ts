@@ -128,21 +128,37 @@ export function createApp(): Express {
   const hasDist = existsSync(join(dist, "index.html"));
   // Runtime brand injection: ONE build serves every deployment, so the
   // shell learns its identity when served, not when built. The injected
-  // blob feeds the pre-paint theme script and the document title.
+  // blob feeds the pre-paint theme script; branded deployments also get
+  // their own <title> and meta description — crawlers and link previews
+  // read the shell long before any client JS runs.
+  const branded = config.brandName && config.brandName !== "NEDB Links";
   const shellHtml = hasDist
-    ? readFileSync(join(dist, "index.html"), "utf8").replace(
-        "<head>",
-        `<head><script>window.__LINKS_CONFIG__=${JSON.stringify({
-          brandName: config.brandName,
-          brandLogoUrl: config.brandLogoUrl || undefined,
-          defaultTheme: config.defaultTheme,
-          authMode: config.authMode,
-        })}</script>${
-          config.faviconUrl
-            ? `<link rel="icon" href="${config.faviconUrl}" /><link rel="apple-touch-icon" href="${config.faviconUrl}" />`
-            : ""
-        }`,
-      )
+    ? readFileSync(join(dist, "index.html"), "utf8")
+        .replace(
+          "<head>",
+          `<head><script>window.__LINKS_CONFIG__=${JSON.stringify({
+            brandName: config.brandName,
+            brandLogoUrl: config.brandLogoUrl || undefined,
+            defaultTheme: config.defaultTheme,
+            authMode: config.authMode,
+          })}</script>${
+            config.faviconUrl
+              ? `<link rel="icon" href="${config.faviconUrl}" /><link rel="apple-touch-icon" href="${config.faviconUrl}" />`
+              : ""
+          }`,
+        )
+        .replace(
+          /<title>[^<]*<\/title>/,
+          branded
+            ? `<title>${config.brandName} — one link that holds all your links</title>`
+            : "$&",
+        )
+        .replace(
+          /<meta\s+name="description"[^>]*>/s,
+          branded
+            ? `<meta name="description" content="Claim your handle on ${config.brandName}: one page for every link, a print-grade QR, save-my-contact, giveaways and live stats. Free forever — premium once, never monthly." />`
+            : "$&",
+        )
     : null;
   const sendShell = (res: Response): void => {
     res.setHeader("content-type", "text/html; charset=utf-8");

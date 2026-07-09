@@ -180,6 +180,31 @@ test("gallery blocks gate free saves — the doorway names the wall", async () =
   assert.match(j.error ?? "", /gallery/i, "the message names the gallery wall");
 });
 
+test("custom SEO gates free saves; clearing back to automatic never walls", async () => {
+  const list = (await (await fetch(`${base}/api/identities`, { headers: authed() })).json()) as {
+    identities: Array<{ identityId: string; handle: string }>;
+  };
+  const idn = list.identities.find((i) => i.handle === "gatefree");
+  assert.ok(idn);
+  const r = await fetch(`${base}/api/identities/${idn.identityId}`, {
+    method: "PUT",
+    headers: authed(),
+    body: JSON.stringify({ seo: { title: "Best fades in Orlando" } }),
+  });
+  assert.equal(r.status, 403, "custom seo is premium");
+  const j = (await r.json()) as { code?: string; error?: string };
+  assert.equal(j.code, "premium_required");
+  assert.match(j.error ?? "", /search/i, "the message names the search wall");
+
+  // Clearing is always free — walls never trap.
+  const clear = await fetch(`${base}/api/identities/${idn.identityId}`, {
+    method: "PUT",
+    headers: authed(),
+    body: JSON.stringify({ seo: null }),
+  });
+  assert.equal(clear.status, 200, "seo: null clears without premium");
+});
+
 test("checkout without Stripe answers 503, not a crash", async () => {
   const r = await fetch(`${base}/api/billing/checkout`, {
     method: "POST",
@@ -331,4 +356,30 @@ test("premium profile cap: the third claim meets the ceiling, grandfathers pass"
     await fetch(`${base}/api/billing/status`, { headers: authed() })
   ).json()) as { capExempt: boolean };
   assert.equal(s2.capExempt, true, "status reports the exemption");
+});
+
+test("premium unlocks custom SEO — the public head carries the owner's words", async () => {
+  const list = (await (await fetch(`${base}/api/identities`, { headers: authed() })).json()) as {
+    identities: Array<{ identityId: string; handle: string }>;
+  };
+  const idn = list.identities.find((i) => i.handle === "gatefree");
+  assert.ok(idn);
+  const r = await fetch(`${base}/api/identities/${idn.identityId}`, {
+    method: "PUT",
+    headers: authed(),
+    body: JSON.stringify({
+      seo: {
+        title: "Gatefree — the proof page",
+        description: "Premium words in the snippet.",
+        image: "https://cdn.example.com/share.jpg",
+      },
+    }),
+  });
+  assert.equal(r.status, 200, "seo saves once premium");
+
+  await fetch(`${base}/api/identities/${idn.identityId}/publish`, { method: "POST", headers: authed() });
+  const page = await (await fetch(`${base}/gatefree`)).text();
+  assert.match(page, /<title>Gatefree — the proof page<\/title>/, "custom title on the public head");
+  assert.match(page, /og:image" content="https:\/\/cdn\.example\.com\/share\.jpg"/, "share card lands");
+  assert.match(page, /summary_large_image/, "large card with an image");
 });

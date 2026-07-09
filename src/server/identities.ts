@@ -68,6 +68,20 @@ const manifestPatchSchema = z.object({
   background: backgroundSchema.nullish(),
   // Opt-in Discover listing — a boolean, owner-controlled, never implied.
   discoverable: z.boolean().optional(),
+  // Custom search & sharing (premium). Length caps are the spam fence:
+  // what engines display is all anyone gets to write.
+  seo: z
+    .object({
+      title: z.string().max(70).optional(),
+      description: z.string().max(160).optional(),
+      image: z
+        .string()
+        .max(500)
+        .regex(/^https:\/\//, "share images must be https URLs")
+        .optional()
+        .or(z.literal("")),
+    })
+    .nullish(),
   // Refile the page after claim — Discover made this field load-bearing.
   // Same enum as claim; the editor UI offers the five real ones.
   identityType: z
@@ -342,6 +356,12 @@ identities.put("/:id", requireUser, wrap(async (req, res) => {
   // Galleries are premium (Marisa's unlock, 7/9): gate the block's
   // presence — premium is one-time-forever, so no grandfather cases.
   const hasGallery = blocks.some((b) => b.type === "gallery");
+  // Custom search & sharing is premium: gate non-empty CONTENT (clearing
+  // fields back to automatic is always free — walls never trap).
+  const wantsSeo = Boolean(
+    patch.data.seo &&
+      Object.values(patch.data.seo).some((v) => typeof v === "string" && v.trim()),
+  );
   // The block cap: free pages hold freeBlockLimit blocks TOTAL (all
   // types — Mark's call), no grandfathering. Public pages keep
   // rendering whatever exists; only SAVES gate.
@@ -355,7 +375,7 @@ identities.put("/:id", requireUser, wrap(async (req, res) => {
         return next && isPremiumFont(next) && next !== current.themeCustom?.[k];
       }),
   );
-  if (newGiveaways.length > 0 || flippingDiscoverOn || wantsPremiumFont || hasGallery || overBlockCap) {
+  if (newGiveaways.length > 0 || flippingDiscoverOn || wantsPremiumFont || hasGallery || wantsSeo || overBlockCap) {
     const status = await unlimitedStatus(auth);
     if (!status.unlimited) {
       res.status(403).json({
@@ -367,7 +387,9 @@ identities.put("/:id", requireUser, wrap(async (req, res) => {
               ? "that font is a premium unlock — upgrade to use the full vault"
               : hasGallery
                 ? "the gallery is a premium unlock — go Premium to show your work"
-                : `free pages hold ${config.freeBlockLimit} blocks — go Premium to keep building`,
+                : wantsSeo
+                  ? "custom search & sharing is a premium unlock — go Premium to own your snippet"
+                  : `free pages hold ${config.freeBlockLimit} blocks — go Premium to keep building`,
         code: "premium_required",
       });
       return;
@@ -408,6 +430,8 @@ identities.put("/:id", requireUser, wrap(async (req, res) => {
       patch.data.background === null
         ? undefined
         : patch.data.background ?? current.background,
+    // And for search & sharing: null = back to automatic (displayName/bio).
+    seo: patch.data.seo === null ? undefined : patch.data.seo ?? current.seo,
     blocks,
     capabilities: manifestCapabilities(blocks),
     updatedAt: new Date().toISOString(),

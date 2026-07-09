@@ -13,6 +13,7 @@ export type UpgradeReason =
   | "blocks"
   | "gallery"
   | "qr"
+  | "seo"
   | "limit"
   | "generic";
 

@@ -530,3 +530,32 @@ test("gallery block: swipeable, lazy, escaped, https-only — empty renders noth
 
   assert.equal(gal([]).includes('class="gal"'), false, "empty gallery renders nothing (saves never walled)");
 });
+
+test("custom SEO: overrides render escaped, share image upgrades the card, fallbacks hold", () => {
+  const withSeo = renderProfileHtml(
+    fixture({
+      seo: {
+        title: "Winter Park Lash & Brow — book online",
+        description: "Lash artistry & brow design in Winter Park. New clients welcome.",
+        image: "https://cdn.example.com/card.jpg",
+      },
+    }),
+    CTX,
+  );
+  assert.ok(withSeo.includes("<title>Winter Park Lash &amp; Brow — book online</title>"), "custom title, escaped");
+  assert.ok(withSeo.includes('content="Lash artistry &amp; brow design in Winter Park. New clients welcome."'), "custom description");
+  assert.ok(withSeo.includes('<meta property="og:image" content="https://cdn.example.com/card.jpg"'), "share image lands");
+  assert.ok(withSeo.includes('content="summary_large_image"'), "image upgrades the twitter card");
+
+  const hostile = renderProfileHtml(
+    fixture({ seo: { title: '"><script>alert(1)</script>', image: "http://insecure.example.com/x.jpg" } }),
+    CTX,
+  );
+  assert.equal(hostile.includes("<script>alert(1)"), false, "seo strings cannot inject");
+  assert.equal(hostile.includes("insecure.example.com"), false, "http share images dropped");
+  assert.ok(hostile.includes('content="summary"'), "no image, plain card");
+
+  const plain = renderProfileHtml(fixture(), CTX);
+  assert.ok(plain.includes("<title>Marisa Yvette (@marisayvettehair)</title>"), "automatic title untouched");
+  assert.equal(plain.includes("og:image"), false, "no share image unless set");
+});

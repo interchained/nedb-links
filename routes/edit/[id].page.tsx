@@ -125,6 +125,103 @@ function blockTitle(b: Block, fallback: string): string {
   }
 }
 
+/**
+ * Search & sharing — the premium snippet studio. A Google-style
+ * preview and a share-card preview render live from the fields, with
+ * automatic fallbacks shown when fields are empty, so owners SEE what
+ * "automatic" already gives them before paying to override it.
+ */
+function SeoPanel({
+  manifest,
+  walled,
+  onChange,
+}: {
+  manifest: IdentityManifest;
+  walled: boolean;
+  onChange: (seo: IdentityManifest["seo"]) => void;
+}): React.ReactElement {
+  const seo = manifest.seo ?? {};
+  const set = (k: "title" | "description" | "image", v: string): void => {
+    if (walled) {
+      requestUpgrade("seo");
+      return;
+    }
+    onChange({ ...seo, [k]: v });
+  };
+  const effTitle = seo.title?.trim() || `${manifest.displayName} (@${manifest.handle})`;
+  const effDesc = seo.description?.trim() || manifest.bio || `${manifest.displayName}`;
+  const img = typeof seo.image === "string" && /^https:\/\//.test(seo.image) ? seo.image : "";
+
+  return (
+    <div className="panel p-5 grid gap-4">
+      <div className="grid sm:grid-cols-2 gap-4">
+        <div>
+          <label className="label flex items-center justify-between">
+            <span>Search title</span>
+            <span className="text-[10px] text-fg-subtle">{(seo.title ?? "").length}/70</span>
+          </label>
+          <input
+            className="field"
+            maxLength={70}
+            value={seo.title ?? ""}
+            placeholder={`${manifest.displayName} (@${manifest.handle})`}
+            onFocus={() => walled && requestUpgrade("seo")}
+            readOnly={walled}
+            onChange={(e) => set("title", e.target.value)}
+          />
+        </div>
+        <div>
+          <label className="label flex items-center justify-between">
+            <span>Share image (https URL)</span>
+          </label>
+          <input
+            className="field"
+            maxLength={500}
+            value={seo.image ?? ""}
+            placeholder="https://… — the card in chats & socials"
+            onFocus={() => walled && requestUpgrade("seo")}
+            readOnly={walled}
+            onChange={(e) => set("image", e.target.value)}
+          />
+        </div>
+      </div>
+      <div>
+        <label className="label flex items-center justify-between">
+          <span>Search description</span>
+          <span className="text-[10px] text-fg-subtle">{(seo.description ?? "").length}/160</span>
+        </label>
+        <textarea
+          className="field min-h-[56px]"
+          maxLength={160}
+          value={seo.description ?? ""}
+          placeholder={manifest.bio || "What should the search snippet say?"}
+          onFocus={() => walled && requestUpgrade("seo")}
+          readOnly={walled}
+          onChange={(e) => set("description", e.target.value)}
+        />
+      </div>
+
+      {/* The snippet, as Google renders it — fallbacks visible. */}
+      <div className="rounded-xl border border-ink-800 bg-ink-850 px-4 py-3">
+        <p className="text-[11px] text-fg-subtle mb-1.5 font-semibold uppercase tracking-wider">
+          Snippet preview
+        </p>
+        <p className="text-[13px] text-fg-subtle truncate">
+          {typeof window !== "undefined" ? window.location.host : "ourlynx.com"}/{manifest.handle}
+        </p>
+        <p className="text-[16.5px] leading-snug text-accent-soft font-medium truncate">{effTitle}</p>
+        <p className="text-[12.5px] text-fg-muted mt-0.5 line-clamp-2">{effDesc}</p>
+      </div>
+      {img && (
+        <div className="rounded-xl border border-ink-800 overflow-hidden max-w-sm">
+          <img src={img} alt="Share card preview" className="w-full aspect-[1.91/1] object-cover" loading="lazy" />
+          <p className="px-3.5 py-2 text-[12.5px] font-semibold truncate bg-ink-850">{effTitle}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Per-type block editors (the built-ins) ───────────────────────────────────
 
 /**
@@ -1110,6 +1207,16 @@ export default function EditPage(): React.ReactElement {
           discoverable: manifest.discoverable ?? false,
           identityType: manifest.identityType,
           blocks: manifest.blocks,
+          // Trimmed-or-null: all-empty SEO clears back to automatic.
+          seo: (() => {
+            const s = manifest.seo ?? {};
+            const clean = {
+              title: s.title?.trim() || undefined,
+              description: s.description?.trim() || undefined,
+              image: s.image?.trim() || undefined,
+            };
+            return clean.title || clean.description || clean.image ? clean : null;
+          })(),
         },
       );
       setManifest(j.manifest);
@@ -1129,6 +1236,7 @@ export default function EditPage(): React.ReactElement {
             : msg.includes("discover") ? "discover"
             : msg.includes("font") ? "font"
             : msg.includes("gallery") ? "gallery"
+            : msg.includes("search") ? "seo"
             : msg.includes("block") ? "blocks"
             : "generic",
         );
@@ -1665,6 +1773,24 @@ export default function EditPage(): React.ReactElement {
               }}
               onHover={setBgHover}
             />
+
+            {/* Search & sharing — premium: own your snippet and share card.
+                Only what engines actually read (title/description/og:image);
+                empty fields stay automatic, clearing is always free. */}
+            <div>
+              <div className="mb-3 px-1 flex items-center gap-2">
+                <h2 className="section-title">Search &amp; sharing</h2>
+                <span className="chip !text-[10px] text-accent-soft">✨ premium</span>
+              </div>
+              <p className="section-desc mb-3 px-1">
+                How your page reads on Google and looks in chat previews. Empty = automatic.
+              </p>
+              <SeoPanel
+                manifest={manifest}
+                walled={Boolean(cfg?.limitEnabled && billing && !billing.unlimited)}
+                onChange={(seo) => patch({ seo })}
+              />
+            </div>
 
             {/* Discover — opt-IN listing. Publishing is not consent; this is. */}
             <div>
