@@ -343,6 +343,16 @@ function GiveawayFields({
           />
         </div>
       </div>
+      <div>
+        <label className="label">Card tagline (optional — the line under the prize on your page)</label>
+        <input
+          className="field"
+          value={str(d.tagline)}
+          maxLength={80}
+          placeholder="free to enter"
+          onChange={(e) => onChange({ ...d, tagline: e.target.value || undefined })}
+        />
+      </div>
       <div className="grid sm:grid-cols-[1fr_110px_130px] gap-3">
         <div>
           <label className="label">Description (optional)</label>
@@ -1123,8 +1133,8 @@ export default function EditPage(): React.ReactElement {
         {receipt && (
           <p className="mb-4 flex items-center gap-1.5 font-mono text-[11px] text-fg-subtle" title={receipt.head}>
             <ShieldCheck size={13} className="text-signal-green shrink-0" />
-            engine receipt · seq {receipt.seq} · head {receipt.head.slice(0, 16)}… — every save is a
-            hash-chained, causally-linked write
+            saved on the record · receipt {receipt.seq} · {receipt.head.slice(0, 16)}… — every
+            version kept, nothing overwritten
           </p>
         )}
         {error && <p className="mb-4 text-signal-red font-mono text-sm">{error}</p>}

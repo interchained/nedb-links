@@ -35,6 +35,11 @@ export function Footer(): React.ReactElement {
           Discover
         </a>
         <span className="h-3 w-px bg-ink-800" aria-hidden />
+        {/* Server route (zero-JS page) — hard link, like Discover. */}
+        <a href="/fair" className="font-medium hover:text-fg transition">
+          Fair draws
+        </a>
+        <span className="h-3 w-px bg-ink-800" aria-hidden />
         <Link href="/terms" className="font-medium hover:text-fg transition">
           Terms
         </Link>

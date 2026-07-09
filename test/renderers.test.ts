@@ -445,3 +445,34 @@ test("brand asset URLs: root-relative allowed, foreign/scheme injection refused"
   assert.ok(evil.includes("<b>⬡</b>"), "protocol-relative logo refused — wordmark fallback");
   assert.equal(evil.includes('rel="icon"'), false, "scheme favicon refused entirely");
 });
+
+test("giveaway tagline: the owner's voice on the card, escaped; human default", () => {
+  const gv = (data: Record<string, unknown>) =>
+    renderProfileHtml(
+      fixture({
+        blocks: [
+          { id: "blk_gv", type: "giveaway", order: 0, data: { raffleId: "rfl_aabbccddeeff00112233", prize: "Lynx swag", closesAt: "2099-01-01T00:00:00.000Z", winners: 1, ...data } },
+        ],
+      }),
+      CTX,
+    );
+
+  // Default: plain human words — the whitepaper vocabulary is off the card.
+  const plain = gv({});
+  assert.ok(plain.includes("free to enter"), "human default tagline");
+  assert.equal(plain.includes("provably fair"), false, "compliance poetry gone from the card");
+
+  // The owner's words, verbatim (Marisa's ask).
+  const custom = gv({ tagline: "Win a free blowout on me 💇" });
+  assert.ok(custom.includes("Win a free blowout on me 💇"), "custom tagline renders");
+  assert.equal(custom.includes("free to enter"), false, "custom replaces the default");
+
+  // Hostile taglines are inert text.
+  const evil = gv({ tagline: "<img src=x onerror=alert(1)>" });
+  assert.equal(evil.includes("<img src=x"), false, "tagline cannot inject markup");
+  assert.ok(evil.includes("&lt;img src=x"), "escaped, not silently dropped");
+
+  // Closed cards stay human too.
+  const closed = gv({ closesAt: "2020-01-01T00:00:00.000Z" });
+  assert.ok(closed.includes("winner on the way"), "closed card is human");
+});

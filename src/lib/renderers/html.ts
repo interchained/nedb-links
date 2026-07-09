@@ -177,9 +177,15 @@ function renderBlock(b: Block, m: IdentityManifest, origin: string): string {
       const rid = typeof d.raffleId === "string" ? d.raffleId : "";
       if (!rid || !d.prize) return "";
       const closed = d.closesAt ? Date.now() >= new Date(String(d.closesAt)).getTime() : false;
+      // The tagline is the OWNER'S voice (Marisa's ask — her clients
+      // should read her words, not our compliance poetry). The fairness
+      // math didn't move an inch; its receipts live at /r/:id/verify
+      // and the plain-words tour at /fair.
+      const tagline =
+        typeof d.tagline === "string" && d.tagline.trim() ? d.tagline.trim() : "free to enter";
       const sub = closed
-        ? "entries closed — drawn provably fair"
-        : `free to enter · drawn provably fair${d.closesAt ? ` · closes ${esc(new Date(String(d.closesAt)).toUTCString().replace(":00 GMT", " GMT"))}` : ""}`;
+        ? "entries closed — winner on the way"
+        : `${esc(tagline)}${d.closesAt ? ` · closes ${esc(new Date(String(d.closesAt)).toUTCString().replace(":00 GMT", " GMT"))}` : ""}`;
       return `<a class="lk gvw" href="${esc(origin)}/r/${esc(rid)}" rel="noopener">
   <span class="ic">🎁</span>
   <span><b>${esc(d.prize)}</b><i class="gvs">${sub}</i></span>

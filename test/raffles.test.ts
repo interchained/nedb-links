@@ -359,3 +359,19 @@ test("lazy auto-draw: a closed giveaway settles itself on the first view — no 
   const mail = lastMailTo("otto@probe.test");
   assert.ok(mail.includes("won"), "winner emailed automatically, zero human clicks");
 });
+
+test("/fair speaks plain words; the tech keeps its receipts one tap deeper", async () => {
+  const r = await fetch(`${base}/fair`);
+  assert.equal(r.status, 200, "the fairness tour is public");
+  const html = await r.text();
+  assert.match(html, /pick a friend/i, "leads with the human promise");
+  assert.match(html, /sha256/, "the skeptic section keeps the real protocol");
+
+  // The per-raffle surfaces: no compliance poetry, human framing, and
+  // the verify page opens with plain words before the math.
+  const entry = await (await fetch(`${base}/r/${raffleId}`)).text();
+  assert.equal(/provably fair/i.test(entry), false, "entry page dropped the whitepaper voice");
+  const verify = await (await fetch(`${base}/r/${raffleId}/verify`)).text();
+  assert.match(verify, /plain-words version/i, "verify page links the tour");
+  assert.match(verify, /Check this draw/, "verify page leads human");
+});

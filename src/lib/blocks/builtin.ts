@@ -101,12 +101,15 @@ export const surfacesBlock = defineBlock({
 export const giveawayBlock = defineBlock({
   type: "giveaway",
   name: "Giveaway",
-  description: "Host a provably fair giveaway — entrants become verified leads.",
+  description: "Host a giveaway people can trust — entrants become verified leads.",
   capabilities: ["shareable", "interactive", "seo"],
   schema: z.object({
     /** Server-assigned on first save — links the block to its raffle doc. */
     raffleId: z.string().max(40).optional(),
     prize: z.string().min(1).max(120),
+    /** The line under the prize on the profile card — the owner's voice
+     *  ("Win a free blowout on me 💇"). Defaults to "free to enter". */
+    tagline: z.string().max(80).optional(),
     description: z.string().max(600).optional(),
     image: z.string().max(200_000).optional(),
     /** ISO datetime — entries stop here; validated server-side per entry. */

@@ -747,15 +747,15 @@ ${spotsBar}
   <button>Enter the giveaway</button>
   <p class="fine">We'll email you a 6-digit code to confirm your entry. By entering you share your
   name, phone, and email with @${esc(r.handle)} and agree to be contacted about this giveaway.
-  One entry per person. Drawn provably fair — <a href="/r/${esc(r.raffleId)}/verify">see how</a>.</p>
+  One entry per person — every entry has an equal shot (<a href="/fair">how draws stay honest</a>).</p>
 </form></div>`;
   } else if (st === "drawn") {
     body += `<div class="card"><b>Winning ticket${(r.winnerTicketIds?.length ?? 0) > 1 ? "s" : ""}:</b>
 ${(r.winnerTicketIds ?? []).map((t) => `<div class="win mono">${esc(t)}</div>`).join("")}
-<p class="fine">Winners were notified by email. Anyone can <a href="/r/${esc(r.raffleId)}/verify">verify this draw</a> — the math is public.</p></div>`;
+<p class="fine">Winners were notified by email. Anyone can <a href="/r/${esc(r.raffleId)}/verify">check this draw</a> — it's all on the record.</p></div>`;
   } else {
-    body += `<div class="card"><p class="sub">Entries closed ${esc(closes)}. The draw happens against a public
-randomness beacon — <a href="/r/${esc(r.raffleId)}/verify">watch this space</a>.</p></div>`;
+    body += `<div class="card"><p class="sub">Entries closed ${esc(closes)}. The winner gets drawn
+shortly — <a href="/r/${esc(r.raffleId)}/verify">watch this space</a>.</p></div>`;
   }
   res.setHeader("content-type", "text/html; charset=utf-8");
   res.send(pageShell(`${r.prize} — giveaway by @${r.handle}`, body));
@@ -793,7 +793,7 @@ raffles.post("/r/:id/enter", wrap(async (req, res) => {
     return;
   }
   if (r.maxEntries && allEntries.length >= r.maxEntries) {
-    res.send(pageShell("Full", `<h1>All spots are taken</h1><p class="sub">This one filled up. The draw is still provably fair — <a href="/r/${esc(r.raffleId)}/verify">watch it settle</a>.</p>${back}`));
+    res.send(pageShell("Full", `<h1>All spots are taken</h1><p class="sub">This one filled up. The draw is still on — <a href="/r/${esc(r.raffleId)}/verify">watch it settle</a>.</p>${back}`));
     return;
   }
   const code = String(randomInt(0, 1000000)).padStart(6, "0");
@@ -875,10 +875,52 @@ raffles.post("/r/:id/confirm", wrap(async (req, res) => {
   res.send(pageShell("You're in", `<h1>You're in ✓</h1>
 <p class="sub">Your ticket for <b>${esc(r.prize)}</b>:</p>
 <div class="card"><div class="win mono">${esc(entry.ticketId)}</div>
-<p class="fine">Keep this id — it's your public, anonymous stake in the draw. The winner is computed
-against a public randomness beacon; <a href="/r/${esc(r.raffleId)}/verify">anyone can verify</a>.
+<p class="fine">Keep this id — it's your ticket in the draw, and it never shows your name.
+When the winner is picked, <a href="/r/${esc(r.raffleId)}/verify">anyone can check it was fair</a>.
 Drawing ${esc(new Date(effectiveClose(r)).toUTCString())}.</p></div>`));
 }));
+
+/**
+ * GET /fair — how draws stay honest, in plain words.
+ *
+ * Marisa's call, 7/8: the hash-chain vocabulary was scaring her
+ * clients off the MAIN surfaces. The math didn't move — it lives here
+ * (and on each giveaway's own verify page), linked from the footer,
+ * one tap away for the skeptic and out of everyone else's way.
+ */
+raffles.get("/fair", (_req, res) => {
+  res.setHeader("content-type", "text/html; charset=utf-8");
+  res.send(pageShell("How our giveaways stay honest", `<h1>How our giveaways stay honest</h1>
+<p class="sub">Short version: nobody — not the page owner, not us — can pick a friend.
+Here's why you can trust a draw you can't see.</p>
+
+<div class="card"><b>1. The promise locks before anyone enters.</b>
+<p class="sub">When a giveaway is created, its recipe — the prize, the closing time, how many
+winners — is published and sealed. Quietly changing any of it afterwards would break the seal
+in public.</p></div>
+
+<div class="card"><b>2. The randomness belongs to no one.</b>
+<p class="sub">The winning pick uses public randomness that doesn't exist yet when entries
+close. Nobody can know it in advance — and everybody can look it up afterwards.</p></div>
+
+<div class="card"><b>3. Anyone can re-run the draw.</b>
+<p class="sub">Every giveaway has its own check page that re-computes the winner from public
+data, live, every time it loads. If anything had been tampered with, that page would say so
+in red — loudly.</p></div>
+
+<div class="card"><b>4. Entries are people, not bots.</b>
+<p class="sub">Every entry is confirmed by email — one entry per person, every entry an equal
+shot. On the public record, entrants are anonymous ticket ids; names are never shown.</p></div>
+
+<div class="card"><b>For the skeptics (welcome, friends)</b>
+<p class="fine">The full protocol: at creation the server publishes commitment = sha256(secret).
+After close, the draw seed is sha256("draw:" + secret + ":" + beacon + ":" + merkleRoot(sorted tickets)),
+where the beacon is the first ITC blockchain block after the effective close (or the engine's
+verified head when the chain is unreachable — the check page labels which). Winners are picked by
+rejection-sampled uniform draws from the sorted ticket list, winners removed between rounds. The
+revealed secret must match the published commitment, and every giveaway's check page re-runs the
+whole computation in the open.</p></div>`));
+});
 
 /** GET /r/:id/verify — the recompute trail. If the live recompute ever
  *  disagrees with the recorded draw, this page says so in red. */
@@ -891,8 +933,10 @@ raffles.get("/r/:id/verify", wrap(async (req, res, next) => {
   r = await settleIfDue(r);
   const entries = await entriesOf(r.raffleId);
   const tickets = entries.map((e) => e.ticketId).sort();
-  let body = `<h1>Verify this draw</h1>
-<p class="sub">Giveaway by <a href="/${esc(r.handle)}">@${esc(r.handle)}</a> — every step below is recomputable by hand.</p>
+  let body = `<h1>Check this draw</h1>
+<p class="sub">Giveaway by <a href="/${esc(r.handle)}">@${esc(r.handle)}</a>. Nobody — not the owner,
+not us — can steer who wins. You don't need the math below for that to protect you; it's here for
+anyone who wants to check it (<a href="/fair">plain-words version</a>).</p>
 <div class="card"><div class="kv">
 <div><b>Prize</b><span>${esc(r.prize)}</span></div>
 <div><b>Commitment (published before entries opened)</b><span class="mono">${esc(r.commitment)}</span></div>
