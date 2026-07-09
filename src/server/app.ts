@@ -23,6 +23,7 @@ import { handles, identities } from "./identities";
 import { preview } from "./preview";
 import { demo } from "./demo";
 import { discover } from "./discover";
+import { qrFlyer, qrStudio } from "./qrstudio";
 import { raffles } from "./raffles";
 import { render } from "./render";
 import { uploads } from "./uploads";
@@ -104,6 +105,7 @@ export function createApp(): Express {
   app.use("/api/handles", handles);
   app.use("/api/identities/:id/analytics", analytics);
   app.use("/api/identities/:id/grants", grants);
+  app.use("/api/identities/:id/qr", qrStudio);
   app.use("/api/identities", identities);
   app.use("/api/preview", preview);
   app.use("/api/upload", uploads);
@@ -156,6 +158,7 @@ export function createApp(): Express {
   app.use(discover);
   app.use(raffles); // /r/:id pages + /api/raffles — before /:handle
   app.use(demo); // /demo — the homepage's live "what done looks like"
+  app.use(qrFlyer); // /qr/flyer/:id — print sheet, before /:handle
   app.use(render);
 
   // ── SPA fallback ──────────────────────────────────────────────────────────

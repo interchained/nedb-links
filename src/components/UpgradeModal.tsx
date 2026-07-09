@@ -20,6 +20,7 @@ const HEADLINES: Record<UpgradeReason, [string, string]> = {
   font: ["Unlock the font vault", "Thirty-five more typefaces — display, serif, mono, script."],
   blocks: ["Your page wants more blocks", "Free pages hold three — premium builds without block limits."],
   gallery: ["Show your work", "Photo galleries are a premium unlock — your page becomes a portfolio."],
+  qr: ["Own the counter", "Brand colors, per-link codes, and print flyers — the QR studio is premium."],
   limit: ["You've used your free profile", "Premium adds more profiles — pay once, never monthly."],
   generic: ["Go Premium", "Everything the free tier holds back, unlocked at once."],
 };

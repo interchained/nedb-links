@@ -226,6 +226,22 @@ export default function IdentitiesPage(): React.ReactElement {
                 >
                   Stats
                 </span>
+                <span
+                  role="link"
+                  tabIndex={0}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    window.location.href = `/qr/${encodeURIComponent(idn.identityId)}`;
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") window.location.href = `/qr/${encodeURIComponent(idn.identityId)}`;
+                  }}
+                  className="btn btn-ghost !py-1.5 !px-3"
+                  title="QR Studio — branded codes, per-link codes, print flyers"
+                >
+                  QR
+                </span>
                 {idn.status === "published" && (
                   <a
                     href={`/${idn.handle}`}
