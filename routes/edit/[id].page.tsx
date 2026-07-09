@@ -945,6 +945,9 @@ export default function EditPage(): React.ReactElement {
   const [studioFile, setStudioFile] = useState<File | null>(null);
   const uploading = studioFile !== null;
   const [manifest, setManifest] = useState<IdentityManifest | null>(null);
+  /** The caller's actual power on this page — the UI renders EXACTLY
+   *  this, never more (a viewer with a Save button is a lie). */
+  const [yourRole, setYourRole] = useState<"viewer" | "editor" | "owner">("editor");
   const [dirty, setDirty] = useState(false);
   const [busy, setBusy] = useState<"save" | "publish" | null>(null);
   const [receipt, setReceipt] = useState<SaveReceipt | null>(null);
@@ -974,8 +977,12 @@ export default function EditPage(): React.ReactElement {
     setError(null);
     setLocked(false);
     try {
-      const j = await getJson<{ manifest: IdentityManifest }>(`/api/identities/${encodeURIComponent(id)}`);
-      const draft = readDraft(id);
+      const j = await getJson<{ manifest: IdentityManifest; yourRole?: "viewer" | "editor" | "owner" }>(
+        `/api/identities/${encodeURIComponent(id)}`,
+      );
+      const role = j.yourRole ?? "editor";
+      setYourRole(role);
+      const draft = role === "viewer" ? null : readDraft(id);
       if (draft && draft.at > (j.manifest.updatedAt ?? "")) {
         // Newer local work exists — restore the EDITABLE fields onto the
         // server's authoritative shell (handle/status/timestamps stay real).
@@ -1023,8 +1030,9 @@ export default function EditPage(): React.ReactElement {
 
   // The draft safety net — dirty work lands in localStorage on a short
   // fuse, so no navigation (Stripe included) can eat an editing session.
+  // Viewers don't draft: nothing they touch can ever be saved.
   useEffect(() => {
-    if (!manifest || !dirty) return;
+    if (!manifest || !dirty || yourRole === "viewer") return;
     const t = setTimeout(() => {
       try {
         localStorage.setItem(
@@ -1036,7 +1044,7 @@ export default function EditPage(): React.ReactElement {
       }
     }, 800);
     return () => clearTimeout(t);
-  }, [manifest, dirty, id]);
+  }, [manifest, dirty, id, yourRole]);
 
   // Landing back from a mid-edit upgrade: strip the param (refresh must
   // not re-celebrate), refresh billing everywhere (the save that was
@@ -1318,8 +1326,9 @@ export default function EditPage(): React.ReactElement {
     }
   }, [manifest, dirty, save]);
 
-  // ⌘S / Ctrl+S — the studio reflex.
+  // ⌘S / Ctrl+S — the studio reflex. Viewers get the browser default.
   useEffect(() => {
+    if (yourRole === "viewer") return;
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "s") {
         e.preventDefault();
@@ -1328,7 +1337,7 @@ export default function EditPage(): React.ReactElement {
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [dirty, busy, save]);
+  }, [dirty, busy, save, yourRole]);
 
   if (locked) {
     return (
@@ -1401,13 +1410,21 @@ export default function EditPage(): React.ReactElement {
                 <ExternalLink size={15} />
               </a>
             )}
-            <button onClick={() => void save()} disabled={busy !== null || !dirty} className="btn btn-secondary !py-1.5 !px-3" title="⌘S">
-              {busy === "save" ? "Saving…" : "Save"}
-            </button>
-            <button onClick={() => void publish()} disabled={busy !== null} className="btn btn-primary !py-1.5 !px-3">
-              {busy === "publish" ? "Publishing…" : published ? "Republish" : "Publish"}
-              <ArrowUpRight size={14} />
-            </button>
+            {yourRole === "viewer" ? (
+              <span className="chip text-[11px] font-semibold text-fg-muted" title="Viewers can look at everything but change nothing — ask the owner for editor access">
+                viewing
+              </span>
+            ) : (
+              <>
+                <button onClick={() => void save()} disabled={busy !== null || !dirty} className="btn btn-secondary !py-1.5 !px-3" title="⌘S">
+                  {busy === "save" ? "Saving…" : "Save"}
+                </button>
+                <button onClick={() => void publish()} disabled={busy !== null} className="btn btn-primary !py-1.5 !px-3">
+                  {busy === "publish" ? "Publishing…" : published ? "Republish" : "Publish"}
+                  <ArrowUpRight size={14} />
+                </button>
+              </>
+            )}
           </>
         }
       />
@@ -1426,6 +1443,12 @@ export default function EditPage(): React.ReactElement {
       {justUpgraded && <PremiumWelcomeModal onClose={() => setJustUpgraded(false)} />}
 
       <main className="max-w-7xl mx-auto px-5 py-8">
+        {yourRole === "viewer" && (
+          <div className="mb-4 panel !border-signal-amber/40 bg-signal-amber/10 px-4 py-3 text-sm">
+            <span className="font-semibold text-signal-amber">You're viewing @{manifest.handle}</span>
+            <span className="text-fg-muted"> — everything's visible, nothing's editable. Ask the owner for editor access to make changes.</span>
+          </div>
+        )}
         {restoredAt && (
           <div className="mb-4 panel !border-signal-amber/40 bg-signal-amber/10 px-4 py-3 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm">
             <span className="font-semibold text-signal-amber">
@@ -1456,8 +1479,17 @@ export default function EditPage(): React.ReactElement {
         {error && <p className="mb-4 text-signal-red font-mono text-sm">{error}</p>}
 
         <div className="grid lg:grid-cols-[minmax(0,1fr)_400px] xl:grid-cols-[minmax(0,1fr)_430px] gap-8 items-start">
-          {/* ── Left: the editor ─────────────────────────────────────────── */}
-          <section className="grid gap-8">
+          {/* ── Left: the editor — a native <fieldset disabled> makes the
+              whole column read-only for viewers: every input, button,
+              and picker inside goes inert in one move. The fieldset IS
+              the grid (NOT display:contents — a contents fieldset does
+              not disable descendants in Chromium, a real footgun caught
+              live). border/padding/min-width reset to vanish it. ── */}
+          <section className="min-w-0">
+            <fieldset
+              disabled={yourRole === "viewer"}
+              className="grid gap-8 min-w-0 border-0 p-0 m-0 disabled:opacity-95"
+            >
             {/* Profile */}
             <div>
               <div className="mb-3 px-1">
@@ -1861,7 +1893,8 @@ export default function EditPage(): React.ReactElement {
               </label>
             </div>
 
-            <AccessPanel identityId={manifest.identityId} />
+            <AccessPanel identityId={manifest.identityId} canManage={yourRole === "owner"} />
+            </fieldset>
           </section>
 
           {/* ── Right: the hero — a floating device, always alive ─────────── */}

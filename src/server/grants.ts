@@ -26,6 +26,8 @@ import { emailPrincipal, normalizeEmail } from "./accounts-email";
 import { authOf, requireUser, type AuthContext } from "./auth";
 import { config } from "./config";
 import { causalParent, db } from "./db";
+import { grantInviteEmail } from "./emails";
+import { sendMail } from "./mailer";
 import { wrap } from "./util";
 
 export const grants = Router({ mergeParams: true });
@@ -161,6 +163,27 @@ grants.post("/", requireUser, wrap(async (req, res) => {
       evidence: `grant ${body.data.role} by ${auth.address}`,
     },
   );
+
+  // "Hey {role}, welcome to {page}" — the share lands in their inbox
+  // (Mark's ask, 7/9). Fire-and-forget by contract: mail trouble never
+  // breaks a grant. Direct doc read, not getManifest — grants.ts can't
+  // import identities.ts (it imports us).
+  if (granteeEmail) {
+    const m = (await db.get(COLLECTIONS.identities, identityId)) as {
+      displayName?: string;
+      handle?: string;
+    } | null;
+    sendMail(
+      grantInviteEmail({
+        to: granteeEmail,
+        role: body.data.role,
+        displayName: m?.displayName || "a page",
+        handle: m?.handle || "",
+        editUrl: `${config.publicOrigin || ""}/edit/${identityId}`,
+      }),
+    ).catch(() => undefined);
+  }
+
   res.status(201).json({ grant: record, seq: put.seq, head: put.head });
 }));
 

@@ -26,7 +26,15 @@ function shortAddr(addr: string): string {
   return addr.length <= 16 ? addr : `${addr.slice(0, 10)}…${addr.slice(-5)}`;
 }
 
-export function AccessPanel({ identityId }: { identityId: string }): React.ReactElement {
+export function AccessPanel({
+  identityId,
+  canManage = true,
+}: {
+  identityId: string;
+  /** Only owners grant and revoke — the server enforces it; the UI
+   *  shows exactly those powers (viewers/editors see the list only). */
+  canManage?: boolean;
+}): React.ReactElement {
   const cfg = useAppConfig();
   const emailMode = cfg?.authMode === "email";
   const [grants, setGrants] = useState<Grant[] | null>(null);
@@ -135,13 +143,15 @@ export function AccessPanel({ identityId }: { identityId: string }): React.React
               {g.role}
             </span>
             <span className="flex-1" />
-            <button
-              onClick={() => void revoke(g.address)}
-              className="text-fg-subtle hover:text-signal-red transition text-xs"
-              title="Revoke access"
-            >
-              ✕
-            </button>
+            {canManage && (
+              <button
+                onClick={() => void revoke(g.address)}
+                className="text-fg-subtle hover:text-signal-red transition text-xs"
+                title="Revoke access"
+              >
+                ✕
+              </button>
+            )}
           </div>
         ))}
       </div>
@@ -149,6 +159,7 @@ export function AccessPanel({ identityId }: { identityId: string }): React.React
       {/* minmax(0,1fr): a bare 1fr is minmax(auto,1fr) — the input's
           intrinsic width sets a floor that stretches the page on phones.
           Found with a layout bisector; keep the 0. */}
+      {canManage && (
       <div className="mt-3 grid grid-cols-[minmax(0,1fr)_auto_auto] gap-2">
         <input
           value={address}
@@ -173,7 +184,8 @@ export function AccessPanel({ identityId }: { identityId: string }): React.React
           Grant
         </button>
       </div>
-      {address.trim() && !addressValid && (
+      )}
+      {canManage && address.trim() && !addressValid && (
         <p className="mt-1.5 text-[11px] text-signal-amber font-mono">
           {emailMode ? "not a valid email yet" : "not a valid itc1 address yet"}
         </p>

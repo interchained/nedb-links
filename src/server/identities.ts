@@ -29,7 +29,7 @@ import { authOf, requireUser, type AuthContext } from "./auth";
 import { unlimitedStatus } from "./billing";
 import { createRaffleForBlock, getRaffle } from "./raffles";
 import { canClaimAnother } from "./billing";
-import { grantsOf, hasRole, writeOwnerGrant } from "./grants";
+import { getGrant, grantsOf, hasRole, writeOwnerGrant } from "./grants";
 import { wrap } from "./util";
 import { causalParent, db } from "./db";
 import { config } from "./config";
@@ -303,7 +303,10 @@ identities.get("/", requireUser, wrap(async (_req, res) => {
   res.json({ identities: list });
 }));
 
-/** GET /api/identities/:id — the manifest, straight from the engine. */
+/** GET /api/identities/:id — the manifest, straight from the engine.
+ *  Carries yourRole so the editor can render EXACTLY the powers the
+ *  caller holds — viewers get a read-only cockpit, not a Save button
+ *  that lies (Mark's catch, 7/9). */
 identities.get("/:id", requireUser, wrap(async (req, res) => {
   const identityId = String(req.params.id);
   const auth = authOf(res);
@@ -316,7 +319,11 @@ identities.get("/:id", requireUser, wrap(async (req, res) => {
     res.status(404).json({ error: "not found" });
     return;
   }
-  res.json({ manifest });
+  const grant = auth.isOperator ? null : await getGrant(identityId, auth.address);
+  res.json({
+    manifest,
+    yourRole: auth.isOperator ? "owner" : (grant?.role ?? "viewer"),
+  });
 }));
 
 /** PUT /api/identities/:id — save the manifest (draft edits).

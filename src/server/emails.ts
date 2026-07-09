@@ -551,3 +551,48 @@ export function giveawayWinnerEmail(opts: {
     ].join("\n"),
   };
 }
+
+// ── 8 · Access invite — shared like a doc, with provenance ───────────────────
+
+const ROLE_BLURB: Record<string, string> = {
+  owner: "full control: edit, publish, and manage who has access",
+  editor: "you can edit the page and publish changes",
+  viewer: "you can see the page, its editor, and its stats",
+};
+
+export function grantInviteEmail(opts: {
+  to: string;
+  role: string;
+  displayName: string;
+  handle: string;
+  editUrl: string;
+}): OutgoingMail {
+  const roleEsc = esc(opts.role);
+  const blurb = ROLE_BLURB[opts.role] ?? "";
+  const html = shell({
+    preheader: `You've been added to ${opts.displayName} (@${opts.handle}) as ${opts.role}.`,
+    kicker: "you're in",
+    content: [
+      heading(`Welcome to ${esc(opts.displayName)}`),
+      paragraph(
+        `<b>@${esc(opts.handle)}</b> added you as <b>${roleEsc}</b> — ${esc(blurb)}.`,
+        { center: true },
+      ),
+      button(opts.role === "viewer" ? "Take a look" : "Open the editor", opts.editUrl),
+      fallbackUrl(opts.editUrl),
+    ].join("\n"),
+    reason: `You're receiving this because @${esc(opts.handle)} on ${esc(BRAND)} shared their page with ${esc(opts.to)}.`,
+  });
+  return {
+    to: opts.to,
+    subject: `You've been added to @${opts.handle} as ${opts.role}`,
+    html,
+    text: [
+      `${BRAND_UP} — WELCOME TO ${opts.displayName.toUpperCase()}`,
+      "",
+      `@${opts.handle} added you as ${opts.role} — ${blurb}.`,
+      "",
+      `Open it: ${opts.editUrl}`,
+    ].join("\n"),
+  };
+}
