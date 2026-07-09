@@ -378,8 +378,14 @@ ${fonts.link}
         width: 36px; height: 36px; border-radius: 11px; flex: none;
         color: ${t.accent}; background: ${t.accent}14; font-size: 17px; }
   .ic svg { width: 19px; height: 19px; fill: currentColor; }
-  .lk > span:not(.ic):not(.ar) { flex: 1; text-align: left; }
-  .lk.noic > span:not(.ar) { text-align: center; padding-left: 20px; }
+  /* Labels center on the CARD, icon or not (Mark's spec, 7/9): the
+     icon (36px + 12 gap) and the arrow (~12px + 12 gap) flank the label
+     asymmetrically, so a naive center drifts right — the padding
+     compensates each case back to true card-center. The giveaway card
+     opts back out below: its poster layout is left-set on purpose. */
+  .lk > span:not(.ic):not(.ar) { flex: 1; text-align: center; padding-right: 24px; min-width: 0; }
+  .lk.noic > span:not(.ar) { padding-right: 0; padding-left: 24px; }
+  .gvw > span:not(.ic):not(.ar) { text-align: left; padding-right: 0; }
   .ar { flex: none; color: ${t.accent}; opacity: 0.55; font-weight: 700;
         transition: transform 0.15s ease, opacity 0.15s ease; }
   .lk:hover .ar { transform: translateX(3px); opacity: 1; }

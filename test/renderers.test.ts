@@ -559,3 +559,17 @@ test("custom SEO: overrides render escaped, share image upgrades the card, fallb
   assert.ok(plain.includes("<title>Marisa Yvette (@marisayvettehair)</title>"), "automatic title untouched");
   assert.equal(plain.includes("og:image"), false, "no share image unless set");
 });
+
+test("link labels center on the card — icon or not; the giveaway stays poster-left", () => {
+  const html = renderProfileHtml(fixture(), CTX);
+  assert.match(
+    html,
+    /\.lk > span:not\(\.ic\):not\(\.ar\) \{ flex: 1; text-align: center/,
+    "iconed labels center",
+  );
+  assert.match(
+    html,
+    /\.gvw > span:not\(\.ic\):not\(\.ar\) \{ text-align: left/,
+    "giveaway keeps its poster layout",
+  );
+});
